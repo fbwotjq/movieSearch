@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="egovframework.ag.homepage.story.service.MovieWebzineDao">
+    <sql id="countHeaderQuery">
+        SELECT COUNT(1) AS TOTAL_COUNT FROM (
+    </sql>
+
+    <sql id="countTailQuery">
+        )
+    </sql>
+
+    <sql id="pagingHeaderQuery">
+        SELECT * FROM (SELECT ROWNUM AS RNUM, Z.* FROM (
+    </sql>
+
+    <sql id="pagingTailQuery">
+        ) Z WHERE ROWNUM &lt;= ${_page} * ${_pageSize}) WHERE RNUM &gt; (${_page} - 1) * ${_pageSize}
+    </sql>
+
+    <sql id="selectMovieWebzineListSql">
+        SELECT A.SEQ
+              ,A.UPCATE
+              ,A.RELDATE
+              ,A.SUBJECT
+              ,A.CONTENT
+              ,B.C_FILE_DIR || '/' || B.C_FILE_NAME AS COVER_IMG_PATH
+              ,C.C_FILE_DIR || '/' || C.C_FILE_NAME AS PDF_PATH
+              ,C.C_FILE_MASK AS PDF_FILE_NAME
+              ,LEAD(SEQ) OVER (ORDER BY SEQ DESC) AS PRE_SEQ
+              ,LAG(SEQ) OVER (ORDER BY SEQ DESC) AS NEXT_SEQ
+        FROM TBL_COVER A
+             INNER JOIN TB_ATTACH_FILE B ON TO_CHAR(A.SEQ) = B.C_BOARD_NO
+             INNER JOIN TB_ATTACH_FILE C ON TO_CHAR(A.SEQ) = C.C_BOARD_NO
+        WHERE 1 = 1
+              AND B.C_BOARD_CD = '31'
+              AND B.C_CATEGORY_CD = '02'
+              AND C.C_BOARD_CD = '31'
+              AND C.C_CATEGORY_CD = '03'
+        ORDER BY A.SEQ DESC
+    </sql>
+
+    <select id="selectMovieWebzineListCount" parameterType="hashMap" resultType="int">
+        <include refid="countHeaderQuery" />
+        <include refid="selectMovieWebzineListSql"/>
+        <include refid="countTailQuery" />
+    </select>
+
+    <select id="selectMovieWebzinePageList" parameterType="hashMap" resultType="webzineCoverVo">
+        <include refid="pagingHeaderQuery" />
+        <include refid="selectMovieWebzineListSql"/>
+        <include refid="pagingTailQuery" />
+    </select>
+
+
+    <select id="selectMovieWebzineCoverInfo" parameterType="long" resultType="webzineCoverVo">
+        SELECT * FROM (<include refid="selectMovieWebzineListSql"/>)
+        WHERE SEQ = #{seq}
+    </select>
+
+    <select id="selectMovieWebzineContentList" parameterType="long" resultType="egovMap">
+		SELECT A.SEQ AS SECTION_SEQ
+		      ,A.SUBJECT AS SECTION_SUBJECT
+		      ,B.SEQ
+		      ,B.SUBJECT
+		      ,B.WRITER AS WRITER_SEQ
+		      ,C.WRITER AS WRITER_NAME
+		FROM TBL_UPSECTION A
+		     INNER JOIN TBL_WEBZINE B ON A.SEQ = B.UPCATE
+		     LEFT OUTER JOIN TBL_WRITER C ON B.WRITER = C.SEQ
+		WHERE A.UPCATE = #{upcate}
+		ORDER BY A.SEQ, B.SEQ
+    </select>
+
+    <select id="selectMovieWebzineContentInfo" parameterType="long" resultType="webzineContentVo">
+		SELECT A.SEQ
+		      ,A.SUBJECT
+		      ,A.SUBTITLE
+		      ,A.WRITER AS WRITER_SEQ
+		      ,B.WRITER AS WRITER_NAME
+		      ,A.UPCATE
+		      ,C.SUBJECT AS UP_SECTION_SUBJECT
+		      ,A.DOWNCATE
+		      ,D.SUBJECT AS DOWN_SECTION_SUBJECT
+		      ,E.C_FILE_DIR || '/' || E.C_FILE_NAME AS CONTENT_IMG_PATH
+		      ,A.CONTENT
+		      ,A.SEARCH_KEYWORD
+		      ,A.PUBLIC_MARK
+		      ,A.PERSON_ID
+		      ,A.MOVIE_ID
+		      ,F.SEQ AS WEBZINE_SEQ
+		FROM TBL_WEBZINE A
+		     LEFT OUTER JOIN TBL_WRITER B ON A.WRITER = B.SEQ
+		     INNER JOIN TBL_UPSECTION C ON A.UPCATE = C.SEQ
+		     LEFT OUTER JOIN TBL_DOWNSECTION D ON A.DOWNCATE = D.SEQ
+		     INNER JOIN TB_ATTACH_FILE E ON TO_CHAR(A.SEQ) = E.C_BOARD_NO
+		     INNER JOIN TBL_COVER F ON F.UPCATE = C.UPCATE
+		WHERE A.SEQ = #{upcate}
+		AND E.C_BOARD_CD = 30
+    </select>
+
+    <sql id="selectMovieWebzineKeywordSearchListSql">
+        SELECT A.SEQ
+              ,A.SUBJECT
+              ,A.SUBTITLE
+              ,A.CONTENT
+              ,A.WRITER AS WRITER_SEQ
+              ,B.WRITER AS WRITER_NAME
+              ,E.C_FILE_DIR || '/' || E.C_FILE_NAME AS CONTENT_IMG_PATH
+              ,A.REGDT
+        FROM TBL_WEBZINE A
+             LEFT OUTER JOIN TBL_WRITER B ON A.WRITER = B.SEQ
+             INNER JOIN TB_ATTACH_FILE E ON TO_CHAR(A.SEQ) = E.C_BOARD_NO
+        WHERE 1 = 1
+              AND E.C_BOARD_CD = 30
+              AND A.SEARCH_KEYWORD LIKE '%' || #{keyword} || '%'
+        ORDER BY A.SEQ DESC
+    </sql>
+
+    <select id="selectMovieWebzineKeywordSearchListCount" parameterType="map" resultType="int">
+        <include refid="countHeaderQuery" />
+        <include refid="selectMovieWebzineKeywordSearchListSql"/>
+        <include refid="countTailQuery" />
+    </select>
+
+    <select id="selectMovieWebzineKeywordSearchPageList" parameterType="map" resultType="webzineContentVo">
+        <include refid="pagingHeaderQuery" />
+        <include refid="selectMovieWebzineKeywordSearchListSql"/>
+        <include refid="pagingTailQuery" />
+    </select>
+
+    <select id="selectWriterWebzineCountList" parameterType="map" resultType="egovMap">
+		SELECT X.WRITER_NAME, NVL(Y.WEBZINE_COUNT, 0) AS WEBZINE_COUNT
+		FROM (SELECT DISTINCT WRITER_NAME
+		      FROM (SELECT TRIM(CASE WHEN INSTR(A.WRITER, '(', 1) > 0 THEN SUBSTR(A.WRITER, 0, INSTR(A.WRITER, '(', 1) - 1) ELSE WRITER END) AS WRITER_NAME
+		            FROM TBL_WRITER A
+		            WHERE 1 = 1
+		                  AND (A.WRITER BETWEEN #{fir} AND #{sec}))) X
+		     LEFT OUTER JOIN
+		     (SELECT TRIM(CASE WHEN INSTR(B.WRITER, '(', 1) > 0 THEN SUBSTR(B.WRITER, 0, INSTR(B.WRITER, '(', 1) - 1) ELSE B.WRITER END) AS WRITER_NAME
+		            ,COUNT(1) AS WEBZINE_COUNT
+		      FROM TBL_WEBZINE A INNER JOIN TBL_WRITER B ON A.WRITER = B.SEQ
+		      GROUP BY B.WRITER) Y
+		         ON X.WRITER_NAME = Y.WRITER_NAME
+		ORDER BY X.WRITER_NAME
+    </select>
+
+
+    <select id="selectWriterWebzineListCount" parameterType="map" resultType="int">
+        <include refid="countHeaderQuery" />
+        <include refid="webzineWriterStoryListQuery"/>
+        <include refid="countTailQuery" />
+    </select>
+
+    <select id="selectWriterWebzinePageList" parameterType="map" resultType="WebzineContentVo">
+        <include refid="pagingHeaderQuery" />
+        <include refid="webzineWriterStoryListQuery"/>
+        <include refid="pagingTailQuery" />
+    </select>
+
+
+     <sql id="webzineWriterStoryListQuery">
+     	 SELECT A.SEQ
+              ,A.SUBJECT AS TITLE
+              ,A.SUBTITLE
+              ,A.WRITER
+              ,B.WRITER AS WRITER_NAME
+              ,A.REGDT
+              ,A.CONTENT
+              ,A.UPFILE AS FILE_NAME
+        FROM TBL_WEBZINE A
+             INNER JOIN TBL_WRITER B
+                 ON A.WRITER = B.SEQ
+             INNER JOIN TBL_COVER C
+                 ON A.CATE = C.UPCATE
+        WHERE 1 = 1
+	    <if test="writerName != null and writerName != ''">
+	        AND B.WRITER = #{writerName}
+	    </if>
+
+	    <if test="searchType == 'WRITER'">
+	                AND B.WRITER LIKE '%' || #{searchText} || '%'
+	    </if>
+	    ORDER BY A.REGDT
+	    ,A.SEQ DESC
+    </sql>
+</mapper>

@@ -1,0 +1,1309 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="egovframework.ag.homepage.own.service.OwnDao">
+	<sql id="countHeaderQuery">
+		SELECT COUNT(1) AS TOTAL_COUNT FROM (
+    </sql>
+
+    <sql id="countTailQuery">
+        )
+    </sql>
+
+    <sql id="pagingHeaderQuery">
+		SELECT * FROM (SELECT ROWNUM AS RNUM, Z.* FROM (
+    </sql>
+
+    <sql id="pagingTailQuery">
+        ) Z WHERE ROWNUM &lt;= #{_page} * #{_pageSize}) WHERE RNUM &gt; (#{_page} - 1) * #{_pageSize}
+    </sql>
+
+	<sql id="selectFilmListQuery">
+		SELECT F_MAIN.MOVIE_ID
+			     , F_MAIN.MOVIE_SEQ
+				, F_MAIN.F_ITEM --구분
+				, F_MAIN.F_UNIT --규격
+				, F_MAIN.F_COLOR --색채
+				, F_MAIN.F_SCREEN --화면비
+				, F_SET.F_SOUND --사운드
+				, F_SET.F_LANG --언어
+				, F_SET.F_JAMAK --자막
+				, F_SET.F_RUNTIME --시간
+				, F_SET.F_POSITION --보관위치
+				, F_SET.F_IMETHOD --입수방법
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'B01' AND CODEINFO.CODE = F_MAIN.F_UNIT) F_UNIT_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.CODE = F_MAIN.F_ITEM AND (CODEINFO.DIV_ID = 'B02' OR CODEINFO.DIV_ID = 'B19')) F_ITEM_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'B20' AND CODEINFO.CODE = F_MAIN.F_COLOR) F_COLOR_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'B03' AND CODEINFO.CODE = F_MAIN.F_SCREEN) F_SCREEN_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'B04' AND CODEINFO.CODE = F_SET.F_SOUND) F_SOUND_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'B08' AND CODEINFO.CODE = F_SET.F_IMETHOD) F_IMETHOD_NM
+				, CASE WHEN (F_SET.F_POSITION IS NOT NULL AND SUBSTR(F_SET.F_POSITION, 1,1) = 'L' )  THEN '상암'
+				WHEN (F_SET.F_POSITION IS NOT NULL AND SUBSTR(F_SET.F_POSITION, 1,1) = 'K' )  THEN '상암'
+				WHEN (F_SET.F_POSITION IS NOT NULL AND SUBSTR(F_SET.F_POSITION, 1,1) = 'M' )  THEN '상암'
+				WHEN (F_SET.F_POSITION IS NOT NULL AND SUBSTR(F_SET.F_POSITION, 1,1) = 'O' )  THEN '상암'
+				WHEN (F_SET.F_POSITION IS NOT NULL AND SUBSTR(F_SET.F_POSITION, 1,1) = 'S' )  THEN '상암'
+				       ELSE '파주'
+				  END F_POSITION_NM --보관위치
+
+		   FROM F_MAIN , F_SET
+		  WHERE F_MAIN.MOVIE_ID = F_SET.MOVIE_ID
+		      AND F_MAIN.MOVIE_SEQ = F_SET.MOVIE_SEQ
+		  	  AND F_MAIN.F_UNIT = F_SET.F_UNIT
+		  	  AND F_MAIN.F_ITEM = F_SET.F_ITEM
+		  	  AND F_MAIN.F_COLOR = F_SET.F_COLOR
+		  	  AND F_MAIN.MOVIE_ID = #{movieId}
+		  	  AND F_MAIN.MOVIE_SEQ = #{movieSeq}
+		  	  AND F_MAIN.F_ITEM IN ('D','M','O','P')
+		  	  AND (F_SET.IPGO > 0 OR F_SET.JAMO1 > 0 OR F_SET.WITAK1 > 0 )
+		  	  AND (NVL(F_SET.OPEN_YN, 'N') = 'N' )
+    </sql>
+
+      <sql id="selectDcinemaListQuery">
+		SELECT T1.MOVIE_ID
+				, T1.MOVIE_SEQ
+				, T2.FORM_CLSS -- 파일종류
+				, T3.CLASS_CLSS -- 구분
+				, T3.FORMAT_CLSS -- 파일형식
+				, T3.SCREEN_SIZE -- 해상도
+				, T3.PICTURE_RATIO -- 화면비
+				, T3.COLOR_MODE -- 컬러모드
+				, T3.SOUND_CHANNEL -- 사운드채널수
+				, T3.METHOD_CLSS  -- 입수방법
+				, T3.D_DETAIL_NO   -- 관리번호
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'DC01' AND CODEINFO.CODE = T2.FORM_CLSS) FORM_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'DC32' AND CODEINFO.CODE = T3.CLASS_CLSS) CLASS_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'DC03' AND CODEINFO.CODE = T3.FORMAT_CLSS) FORMAT_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'DC04' AND CODEINFO.CODE = T3.SCREEN_SIZE) SCREEN_SIZE_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'DC05' AND CODEINFO.CODE = T3.PICTURE_RATIO) PICTURE_RATIO_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'DC08' AND CODEINFO.CODE = T3.COLOR_MODE) COLOR_MODE_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'K03' AND CODEINFO.CODE = T3.METHOD_CLSS) METHOD_CLSS_NM
+		   FROM MOVIE_SE T1
+		  INNER JOIN DCINEMA_MAIN T2 ON T2.MOVIE_ID = T1.MOVIE_ID AND T2.MOVIE_SEQ = T1.MOVIE_SEQ
+		  INNER JOIN DCINEMA_DETAIL T3 ON T3.D_MAIN_ID = T2.D_MAIN_ID
+		 WHERE T1.MOVIE_ID = #{movieId}
+		    AND T1.MOVIE_SEQ = #{movieSeq}
+		    AND NVL(T3.OPEN_YN, 'N' ) &lt;&gt; 'Y'
+    </sql>
+
+    <sql id="selectTapeListQuery">
+		SELECT C.MOVIE_ID
+				, C.MOVIE_SEQ
+				, A.DEV_CLSS --규격
+				, A.COMPY --제조사
+				, A.V_COMPANY --제조회사
+				, A.V_SALE --판매원
+				, A.NATIONAL_CLSS --제작국가
+				, A.PROD_YEAR --제조년도
+				, A.V_CNT  --수량
+				, A.LANG_CLSS --언어
+				, A.CAP_CLSS --자막
+				, A.V_TAPEBUN --매체분량
+				, A.BARCODE --바코드
+				, A.LEVEL_CLSS --관람기준
+				, A.CNS_NO --심의번호
+				, A.CNS_DATE --심의일자
+				, A.SCREEN_CLSS --화면종류
+				, A.COLOR_CLSS --색채
+				, A.RUNTIME --상영시간
+				, A.V_RMETHOD --녹화방식
+				, A.NTSC_CLSS --NTSC
+				, B.POS_CLSS --보관위치
+				, A.ADDTIONAL_IMG --부가영상
+				, A.SUPPLEMENT --부록
+				, A.CONTENTS		--내용
+				, A.VIDEO_NO  --관리번호
+				, A.V_FILE  -- 비디오 이미지
+				, A.TITLES	-- 제목
+				, A.TITLE_SUB -- 부제목
+				, A.TITLE_ETC -- 기타제목
+				, LPAD(A.VIDEO_ID,8,'0') T_NO
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'C04' AND CODEINFO.CODE = A.DEV_CLSS) DEV_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'A13' AND CODEINFO.CODE = A.NATIONAL_CLSS) NATIONAL_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'A08' AND CODEINFO.CODE = A.LEVEL_CLSS) LEVEL_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'B20' AND CODEINFO.CODE = A.COLOR_CLSS) COLOR_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'C05' AND CODEINFO.CODE = A.SCREEN_CLSS) SCREEN_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'DI' AND CODEINFO.CODE = A.V_RMETHOD) V_RMETHOD_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'D21' AND CODEINFO.CODE IN (B.POS_CLSS)) POS_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'C09' AND CODEINFO.CODE IN (A.NTSC_CLSS)) NTSC_CLSS_NM
+		   FROM VIDEO A, VIDEO_DETAIL B, VIDEO_MOV_REL C
+		   WHERE A.VIDEO_ID=B.VIDEO_ID
+		       AND A.VIDEO_ID=C.VIDEO_ID
+		       AND A.DEV_CLSS IN ('R','D','V','H','S','G','A','6','M','B','C')
+		       AND A.FORM_CLSS = 'T' --T: 테이프, D: 디스크
+		       AND B.POS_CLSS IN ('1','4','21','5')
+	           AND C.MOVIE_ID = #{movieId}
+	           AND C.MOVIE_SEQ = #{movieSeq}
+	           AND (OPEN_YN = 'N' OR OPEN_YN IS null)
+	           AND SCREEN_YN = '1'
+    </sql>
+
+    <sql id="selectDiskListQuery">
+		SELECT C.MOVIE_ID
+				, C.MOVIE_SEQ
+				, A.DEV_CLSS --규격
+				, A.COMPY --제조사
+				, A.V_COMPANY --제조회사
+				, A.V_SALE --판매원
+				, A.NATIONAL_CLSS --제작국가
+				, A.PROD_YEAR --제조년도
+				, A.V_CNT  --수량
+				, A.LANG_CLSS --언어
+				, A.CAP_CLSS --자막
+				, A.V_TAPEBUN --매체분량
+				, A.BARCODE --바코드
+				, A.LEVEL_CLSS --관람기준
+				, A.CNS_NO --심의번호
+				, A.CNS_DATE --심의일자
+				, A.SCREEN_CLSS --화면종류
+				, A.COLOR_CLSS --색채
+				, A.RUNTIME --상영시간
+				, A.V_RMETHOD --녹화방식
+				, A.NTSC_CLSS --NTSC
+				, B.POS_CLSS --보관위치
+				, A.ADDTIONAL_IMG --부가영상
+				, A.SUPPLEMENT --부록
+				, A.CONTENTS		--내용
+				, A.VIDEO_NO  --관리번호
+				, A.V_FILE  -- 비디오 이미지
+				, A.TITLES	-- 제목
+				, A.TITLE_SUB -- 부제목
+				, A.TITLE_ETC -- 기타제목
+				, LPAD(A.VIDEO_ID,8,'0') T_NO
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'C04' AND CODEINFO.CODE = A.DEV_CLSS) DEV_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'A13' AND CODEINFO.CODE = A.NATIONAL_CLSS) NATIONAL_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'A08' AND CODEINFO.CODE = A.LEVEL_CLSS) LEVEL_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'B20' AND CODEINFO.CODE = A.COLOR_CLSS) COLOR_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'C05' AND CODEINFO.CODE = A.SCREEN_CLSS) SCREEN_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'DI' AND CODEINFO.CODE = A.V_RMETHOD) V_RMETHOD_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'D21' AND CODEINFO.CODE IN (B.POS_CLSS)) POS_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'C09' AND CODEINFO.CODE IN (A.NTSC_CLSS)) NTSC_CLSS_NM
+		   FROM VIDEO A, VIDEO_DETAIL B, VIDEO_MOV_REL C
+		   WHERE A.VIDEO_ID=B.VIDEO_ID
+		       AND A.VIDEO_ID=C.VIDEO_ID
+		       AND A.DEV_CLSS IN ('R','D','V','H','S','G','A','6','M','B','C')
+		       AND A.FORM_CLSS = 'D' --T: 테이프, D: 디스크
+		       AND B.POS_CLSS IN ('1','4','21','5')
+	           AND C.MOVIE_ID = #{movieId}
+	           AND C.MOVIE_SEQ = #{movieSeq}
+	           AND (OPEN_YN = 'N' OR OPEN_YN IS null)
+	           AND SCREEN_YN = '1'
+    </sql>
+
+    <sql id="selectMultiListQuery">
+		SELECT
+				<choose>
+				    <when test="personId != null and personId != ''">
+				    'P' GUBUN
+				    , B.PERSON_ID
+				    </when>
+				    <otherwise>
+				    'M' GUBUN
+				    , B.MOVIE_ID
+				    , B.MOVIE_SEQ
+				    </otherwise>
+				</choose>
+		        , A.IMAGE_NM
+				, LPAD(A.MUL_ID, 8, '0') IMGID   --멀티미디어 이미지
+				, A.MSCREEN_CLSS --상영구분
+				, A.RUNTIME --상영시간
+				, A.SECONDS --상영시간
+				, A.LEVEL_CLSS --관람기준
+				, A.COLOR_CLSS --색채
+				, A.LANGUAGE --언어
+				, A.PLOT --내용
+				, A.MUL_TITLE
+				, A.TITLE_SUB
+				, A.TITLE_ETC
+				, C.MULTOR_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'A09' AND CODEINFO.CODE = A.MSCREEN_CLSS) MSCREEN_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'A08' AND CODEINFO.CODE = A.LEVEL_CLSS) LEVEL_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'B20' AND CODEINFO.CODE = A.COLOR_CLSS) COLOR_CLSS_NM
+		   FROM MULTI_NEW A , MULTI_FILE C,
+		        ( SELECT CODE , CODE_NM FROM CODEINFO WHERE DIV_ID = 'A09') SCREEN,
+		        ( SELECT CODE , CODE_NM FROM CODEINFO WHERE DIV_ID = 'A08') LEVELNM,
+		        <choose>
+				    <when test="personId != null and personId != ''">
+				    MULTI_PERSON_REL B
+				    </when>
+				    <otherwise>
+				    MULTI_MOVIE_REL B
+				    </otherwise>
+				</choose>
+		  WHERE A.MSCREEN_CLSS = SCREEN.CODE(+)
+		    AND A.LEVEL_CLSS = LEVELNM.CODE(+)
+		    AND A.MUL_ID = B.MUL_ID
+		    AND A.MUL_ID = C.MUL_ID
+		    AND C.USE_CLSS = '1'
+		    AND C.OPEN_YN = 'Y'
+		    AND C.F_SIZE > 0
+		    AND SCREEN.CODE_NM &lt;&gt; '본편'
+		    <choose>
+			    <when test="personId != null and personId != ''">
+			    AND B.PERSON_ID = #{personId}
+        		AND A.MSCREEN_CLSS  &lt;&gt;  '2'
+			    </when>
+			    <otherwise>
+			    AND B.MOVIE_ID = #{movieId}
+		    	AND B.MOVIE_SEQ = #{movieSeq}
+			    </otherwise>
+			</choose>
+    </sql>
+
+    <sql id="selectVodListQuery">
+		SELECT A.MOVIE_ID
+				, A.MOVIE_SEQ
+			    <choose>
+				    <when test="personId != null and personId != ''">
+				    , 'P' GUBUN
+				    , CM.PERSON_ID
+				    </when>
+				    <otherwise>
+				    , 'M' GUBUN
+				    </otherwise>
+				</choose>
+		        , B.MUL_TITLE --본제목
+		        , B.TITLE_SUB --부제목
+		        , B.TITLE_ETC --기타제목
+		        , B.TITLE_EQUAL
+				, B.RUNTIME --상영시간
+				, B.COLOR_CLSS --색채
+				, B.MSCREEN_CLSS --상영구분
+				, B.LEVEL_CLSS --관람기준
+				, B.LANGUAGE --언어
+				, B.PLOT --내용
+				, C.H_SIZE --프레임크기
+				, C.V_SIZE --프레임크기
+				, C.PRICE --가격
+				, C.YOUTUBE_URL
+				, C.NAVER_URL
+        		, LEV.CODE_NM LEVEL_CLSS_NM
+          		, COLOR.CODE_NM COLOR_CLSS_NM
+		  FROM MULTI_MOVIE_REL A, MULTI_NEW B, MULTI_FILE C,
+		   (SELECT CODE, CODE_NM FROM CODEINFO WHERE DIV_ID = 'A08') LEV,
+		   (SELECT CODE, CODE_NM FROM CODEINFO WHERE DIV_ID = 'B20') COLOR,
+		   (SELECT CODE, CODE_NM FROM CODEINFO WHERE DIV_ID = 'A14') LANG
+		   <if test="personId != null and personId != ''">
+		   , CREDIT_MOVIE CM
+		   </if>
+		   WHERE A.MUL_ID=B.MUL_ID AND B.MUL_ID=C.MUL_ID
+		   AND B.LEVEL_CLSS = LEV.CODE(+)
+		   AND B.COLOR_CLSS= COLOR.CODE(+)
+		   AND B.LANGUAGE = LANG.CODE(+)
+		   <choose>
+			    <when test="personId != null and personId != ''">
+			    AND (A.MOVIE_ID=CM.MOVIE_ID AND A.MOVIE_SEQ=CM.MOVIE_SEQ)
+			    AND CM.PERSON_ID = #{personId}
+			    AND CM.CREDIT_ID = '005'
+			    </when>
+			    <otherwise>
+			    AND A.MOVIE_ID = #{movieId}
+		    	AND A.MOVIE_SEQ = #{movieSeq}
+			    </otherwise>
+			</choose>
+			<choose>
+			    <when test="mobileYN != null and mobileYN != '' and mobileYN.equalsIgnoreCase('Y')">
+			    AND C.USE_CLSS IN ('2','6') -- 1 웹서비스, 2 영상도서관VOD, 6 모바일 //  PC웹: 1, 2 노출 / 모바일웹: 2,6 노출하시면 됩니다.
+			    </when>
+			    <otherwise>
+			    AND C.USE_CLSS IN ('1','2') -- 1 웹서비스, 2 영상도서관VOD, 6 모바일 //  PC웹: 1, 2 노출 / 모바일웹: 2,6 노출하시면 됩니다.
+			    </otherwise>
+			</choose>
+		   AND C.OPEN_YN = 'Y'
+		   AND C.MULTOR_NM IS NOT NULL
+		   AND MSCREEN_CLSS = '2' --2 : 본편, 1 : 예고편, 4 : 메이킹, 5 : 뮤직비디오, 6 : 제작보고회, 7 : 영화해설, 3 : 기타, 8 : GV
+
+    </sql>
+
+    <sql id="selectPosterListQuery">
+		SELECT A.MOVIE_ID
+				, A.MOVIE_SEQ
+				, A.FED_NO
+       			, A.POSTER_ID
+       			, A.POSTER_NO
+       			, LPAD(A.POSTER_NO,8,'0') IMGID
+       			, A.PROHIBIT_19 PROHIBIT19
+				, A.POST_NAME MAIN_TITLE --본제목
+		        , A.TITLE_SUB --부제목
+		        , A.TITLE_ETC --기타제목
+		        , A.TITLE_EQUAL
+				, A.NATION_CLSS --발행국
+				, A.NATIONAL_CLSS --국가구분
+				, A.PRODUCER --배급
+				, A.POSTER_PIC --사진
+				, A.AD_DESIGN --디자인
+				, A.PRINT_INFO --인쇄
+				, A.POST_YEAR --개봉일
+				, A.ROW_NO --종번호
+				, A.LANG_CLSS --언어
+				, A.COLOR_CLSS --색채
+				, A.PERSON_INFO --인물
+				, A.COPY_TEXT --홍보카피
+				, A.KEYWORDS --내용
+				, A.REL_DATA_NO --연계자료
+				, A.TYPE_CLSS --'1' 인쇄물, '2' 파일
+				, A.IMAGE_NM --이미지파일명
+				, B.IMG_HSIZE --크기
+				, B.IMG_VSIZE --크기
+				, B.FILE_SIZE --용량
+				, B.DP_VALUE --해상도
+				, B.COL_DEPTH --색심도
+				, B.POS_CLSS --보관위치
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'A13' AND CODEINFO.CODE = A.NATION_CLSS) NATION_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'A16' AND CODEINFO.CODE = A.NATIONAL_CLSS) NATIONAL_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'B20' AND CODEINFO.CODE = A.COLOR_CLSS) COLOR_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'E07' AND CODEINFO.CODE = A.TYPE_CLSS) TYPE_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'D21' AND CODEINFO.CODE = B.POS_CLSS) POS_CLSS_NM
+       			, (SELECT  WM_CONCAT(T1.KORNM)
+    				 FROM (select POSTER_PERS_REL.POSTER_ID, POSTER_PERS_REL.PERSON_ID, PERSON.KORNM, PERSON.CHINM, PERSON.ENGNM From POSTER_PERS_REL
+                    INNER JOIN PERSON ON POSTER_PERS_REL.PERSON_ID = PERSON.PERSON_ID)T1
+   					WHERE T1.POSTER_ID = A.POSTER_ID
+ 					GROUP BY T1.POSTER_ID
+ 					) PERSON_NM
+		 FROM POSTER A, POSTER_SET B
+		 <choose>
+		    <when test="personId != null and personId != ''">
+		    , POSTER_PERS_REL R
+		    </when>
+		    <when test="fedNo != null and fedNo != ''">
+		    , TBLFESTIVAL FE, TBLFESTIVALDETAIL FD
+		    </when>
+		</choose>
+
+		 WHERE A.POSTER_ID = B.POSTER_ID
+			--AND A.MAIN_JPG = 'Y' --이 조건은 현재 영화정보 조회페이지 좌측상단 메인이미지 조건
+			<choose>
+			    <when test="personId != null and personId != ''">
+			    AND CONTENS_CLSS = '3' --CONTENS_CLSS = 1 : 영화, 3:인물,  4 : 영화제, 5 : 기타
+			    AND A.POSTER_ID = R.POSTER_ID
+			    AND R.PERSON_ID = #{personId}
+			    </when>
+			    <when test="fedNo != null and fedNo != ''">
+			    AND CONTENS_CLSS = '4' --CONTENS_CLSS = 1 : 영화, 3:인물,  4 : 영화제, 5 : 기타
+			    AND A.FED_NO = FD.FED_NO
+			    AND FD.FE_NO = FE.FE_NO
+			    AND A.FED_NO = #{fedNo}
+			    </when>
+			    <otherwise>
+			    AND CONTENS_CLSS = '1' --CONTENS_CLSS = 1 : 영화, 3:인물,  4 : 영화제, 5 : 기타
+			    AND A.MOVIE_ID = #{movieId}
+				AND A.MOVIE_SEQ = #{movieSeq}
+			    </otherwise>
+			</choose>
+			<choose>
+				<when test="@egovframework.ag.common.util.StringUtils@toEqualsStr('1', typeClss) == true"> --인쇄물만 있는 경우
+			    AND A.TYPE_CLSS =  #{typeClss}
+			    AND B.POS_CLSS = '8'
+			    AND (A.NOVIEW_YN = 'N' OR  A.NOVIEW_YN IS NULL)
+				</when>
+				<when test="@egovframework.ag.common.util.StringUtils@toEqualsStr('2', typeClss) == true"> --파일만 있는경우
+			    AND A.TYPE_CLSS =  #{typeClss}
+			    AND B.USE_CLSS = '1'
+			    AND B.OPEN_YN = 'Y'
+			    AND (A.NOVIEW_YN = 'N' OR  A.NOVIEW_YN IS NULL)
+				</when>
+			    <otherwise> -- 인쇄물, 파일 전부검색
+			    AND (
+						(A.TYPE_CLSS = '1' AND B.POS_CLSS = '8' AND (A.NOVIEW_YN = 'N' OR  A.NOVIEW_YN IS NULL))
+						OR
+						(A.TYPE_CLSS = '2' AND B.USE_CLSS = '1' AND B.OPEN_YN = 'Y' AND (A.NOVIEW_YN = 'N' OR  A.NOVIEW_YN IS NULL))
+					)
+			    </otherwise>
+			</choose>
+
+    </sql>
+
+    <sql id="selectStillListQuery">
+		SELECT A.MOVIE_ID
+				, A.MOVIE_SEQ
+				, A.FED_NO
+		        , A.STILL_NO
+		        , B.STILL_DETAIL_NO
+		        , TO_CHAR(B.STILL_DETAIL_NO) AS POSTER_STILL_NO
+		        , LPAD(A.STILL_T_NO,8,'0') IMGID
+       			, A.PROHIBIT_19 PROHIBIT19
+		        , A.STILL_NM MAIN_TITLE --본제목
+				, A.TYPE_CLSS --구분
+				, A.CONTENS_DCLSS --내용상세
+				, A.LANG_CLSS --언어
+				, A.COLOR_CLSS --색채
+				, A.PERSON_INFO --인물
+				, A.KEYWORDS --내용
+        		, A.KIND_CLSS
+				, A.STILL_NO_FILE --연계자료
+				, A.IMAGE_NM --이미지파일명
+				, A.ST_YEAR
+				, B.HSIZE --크기
+				, B.VSIZE --크기
+				, B.FILE_SIZE --용량
+				, B.DP_VALUE --해상도
+				, B.COL_DEPTH --색심도
+				, B.POS_CLSS --보관위치
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'E03' AND CODEINFO.CODE = A.TYPE_CLSS) TYPE_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'E10' AND CODEINFO.CODE = A.CONTENS_DCLSS) CONTENS_DCLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'E07' AND CODEINFO.CODE = A.KIND_CLSS) KIND_CLSS_NM
+		 FROM STILL A, STILL_DETAIL B
+		 <choose>
+		    <when test="personId != null and personId != ''">
+		    , STILL_PERS_REL R
+		    </when>
+		    <when test="fedNo != null and fedNo != ''">
+		    , TBLFESTIVALDETAIL FD
+		    </when>
+		</choose>
+
+	    WHERE A.STILL_ID = B.STILL_ID
+		<choose>
+		    <when test="personId != null and personId != ''">
+		    AND A.STILL_ID = R.STILL_ID
+		    AND R.PERSON_ID = #{personId}
+		    </when>
+		    <when test="fedNo != null and fedNo != ''">
+		    AND A.FED_NO = FD.FED_NO
+		    AND A.FED_NO = #{fedNo}
+		    </when>
+		    <otherwise>
+		    AND A.MOVIE_ID = #{movieId}
+			AND A.MOVIE_SEQ = #{movieSeq}
+		    </otherwise>
+		</choose>
+		<choose>
+			<when test="@egovframework.ag.common.util.StringUtils@toEqualsStr('1', typeClss) == true"> --인쇄물만 있는 경우
+		    AND A.KIND_CLSS =  '1'
+		    AND B.POS_CLSS = '7'
+		    AND (A.NOVIEW_YN = 'N' OR  A.NOVIEW_YN IS NULL)
+		    </when>
+		    <when test="@egovframework.ag.common.util.StringUtils@toEqualsStr('2', typeClss) == true"> --파일만 있는경우
+		    AND A.KIND_CLSS = '2'
+		    AND A.IMAGE_NM IS NOT NULL
+		    AND B.OPEN_YN = 'Y'
+		    AND (A.NOVIEW_YN = 'N' OR  A.NOVIEW_YN IS NULL)
+		    </when>
+		    <otherwise> -- 인쇄물, 파일 전부검색
+		    AND (
+		    		(A.KIND_CLSS = '1' AND B.POS_CLSS = '7'  AND (A.NOVIEW_YN = 'N' OR  A.NOVIEW_YN IS NULL))
+		    		OR
+		    		(A.KIND_CLSS = '2' AND A.IMAGE_NM IS NOT NULL AND B.OPEN_YN = 'Y' AND (A.NOVIEW_YN = 'N' OR  A.NOVIEW_YN IS NULL))
+				)
+		    </otherwise>
+		</choose>
+
+
+    </sql>
+
+     <sql id="selectScenarioListQuery">
+		SELECT A.MOVIE_ID
+				, A.MOVIE_SEQ
+		        , A.SCENARIO_NO
+		        , A.S_TITLE --본제목
+		        , A.TITLE_SUB --부제목
+		        , A.TITLE_ETC --기타제목
+		        , A.TITLE_EQUAL --대동제목
+				, A.FORM_CLSS --형태
+				, A.CONTENS_CLSS --내용구분
+				, A.S_SCENARIO --각본
+				, A.S_FILMZATION --각색
+				, A.DIRECTOR --감독
+				, A.S_AUTHOR --원작자
+				, A.ORG_TITLE --원작
+				, A.C_AUTHOR --콘티작가
+				, A.PRODUCE --제작사
+				, A.S_YEAR --발행년도
+				, A.H_SIZE --실물크기
+				, A.V_SIZE --실물크기
+				, A.LANG_CLSS --언어
+				, A.S_PAGE --페이지
+				, A.PAGE_CLSS --페이지
+				, B.POS_CLSS --보관위치
+				, B.MNGNO --배가번호
+				, DECODE(A.REL_DATA_NO,null,'', DECODE(a.form_clss,'1','파일 ('||A.REL_DATA_NO||')의 원본', DECODE(a.form_clss,'2','인쇄물 ('||A.REL_DATA_NO||')의 사본',''))) COPY_INFO
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'E07' AND CODEINFO.CODE = A.FORM_CLSS) FORM_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'D21' AND CODEINFO.CODE = B.POS_CLSS) POS_CLSS_NM
+		FROM SCENARIO A, SCENARIO_DETAIL B
+		WHERE A.SCENARIO_ID = B.SCENARIO_ID
+		    AND A.MOVIE_ID = #{movieId}
+		    AND A.MOVIE_SEQ = #{movieSeq}
+		    AND
+			(
+		    (A.FORM_CLSS = '1' AND B.POS_CLSS IN( '4','11') AND (B.CLOSE_YN = 'N' OR B.CLOSE_YN IS NULL)) OR
+		    (A.FORM_CLSS = '2' AND B.F_OPEN_YN = 'Y' AND (B.CLOSE_YN = 'N' OR B.CLOSE_YN IS NULL))
+		    )
+    </sql>
+
+    <sql id="selectHandbillListQuery">
+		SELECT A.MOVIE_ID
+				, A.MOVIE_SEQ
+				, A.HANDBILL_NO --관리번호
+				, A.HANDBL_NM --본제목
+				, A.TITLE_SUB --부제목
+				, A.TITLE_ETC --기타제목
+				, A.KIND_CLSS --형태
+       			, A.DIV_CLSS --구분
+				, A.PUB_PLACE --배급
+				, A.NATIONAL_CLSS --국가구분
+				, A.NATION_CLSS --발행국
+				, A.LANG_CLSS --언어
+				, A.H_PAGE --페이지
+				, B.POS_CLSS --보관위치
+				, B.H_SIZE --크기
+				, B.V_SIZE --크기
+				, LPAD(B.HANDBILL_ID,8,'0') IMGID
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'E07' AND CODEINFO.CODE = A.KIND_CLSS) KIND_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'E09' AND CODEINFO.CODE = A.CONTENS_CLSS) CONTENS_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'E13' AND CODEINFO.CODE = A.DIV_CLSS) DIV_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'A16' AND CODEINFO.CODE = A.NATIONAL_CLSS) NATIONAL_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'A13' AND CODEINFO.CODE = A.NATION_CLSS) NATION_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'D21' AND CODEINFO.CODE = B.POS_CLSS) POS_CLSS_NM
+		        , (SELECT  WM_CONCAT(HANDBILL_IMAGE.TN_IMAGE_NM)
+		    				 FROM HANDBILL_IMAGE
+		   					WHERE HANDBILL_IMAGE.HANDBILL_ID = A.HANDBILL_ID
+		 					GROUP BY HANDBILL_IMAGE.HANDBILL_ID
+		 					) TN_IMAGE_NM --썸네일
+		FROM HANDBILL A, HANDBILL_DETAIL B
+		    <if test="fedNo != null and fedNo != ''">
+		    , TBLFESTIVALDETAIL FD
+		    </if>
+	  WHERE A.HANDBILL_ID = B.HANDBILL_ID
+		<choose>
+		    <when test="fedNo != null and fedNo != ''">
+		    AND A.FED_NO = FD.FED_NO
+		    AND FD.FED_NO = #{fedNo}
+		    </when>
+			<otherwise>
+			--AND ((A.KIND_CLSS = '1' AND B.POS_CLSS = '8') OR (A.KIND_CLSS = '2' AND B.OPEN_YN = 'Y'))
+			AND A.MOVIE_ID = #{movieId}
+			AND A.MOVIE_SEQ = #{movieSeq}
+			</otherwise>
+		</choose>
+		    AND B.POS_CLSS IN ('4','8','21')
+    </sql>
+
+    <sql id="selectBookListQuery">
+		SELECT
+				<choose>
+				    <when test="personId != null and personId != ''">
+				    'P' GUBUN
+				    , R.PERSON_ID
+				    </when>
+				    <otherwise>
+				    'M' GUBUN
+				    , R.MOVIE_ID
+				    , R.MOVIE_SEQ
+				    </otherwise>
+				</choose>
+				,A.TYPE_CLSS --형태
+				,A.CONTENS_CLSS --구분
+				,A.BOOK_NO --제목
+				,A.BOOK_NM --제목
+				,A.TITLE_SUB --부제목
+				,A.TITLE_ETC --기타제목
+				,A.ORI_BNM --본서명
+				,A.C_TTL_NM --총서명
+				,A.NATIONAL_CLSS --국가구분
+				,A.NATION_CLSS --발행국
+				,A.WRITER --저자
+				,A.TRANSLATOR --역자
+				,A.EDITOR --편저자
+				,A.DIRECTOR --총괄책임자
+				,A.PUB_PLACE --발행처
+				,A.PUB_YEAR --발행년도
+				,A.H_SIZE --크기
+				,A.V_SIZE --크기
+				,A.B_PAGE --페이지
+				,A.PAGE_CLSS --페이지
+				,A.LANG_CLSS --언어
+				,A.B_COPY --판차
+				,A.SUPPLEMENT --부록
+				,A.THEME_DIV --주제구분
+				,B.POS_CLSS --보관위치
+				,B.MNGNO --배가번호
+				,A.KEYWORDS --키워드
+				,A.NOTE --내용
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'E07' AND CODEINFO.CODE = A.TYPE_CLSS) TYPE_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'D08' AND CODEINFO.CODE = A.CONTENS_CLSS) CONTENS_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'A16' AND CODEINFO.CODE = A.NATIONAL_CLSS) NATIONAL_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'A13' AND CODEINFO.CODE = A.NATION_CLSS) NATION_CLSS_NM
+		FROM BOOK A, BOOK_DETAIL B
+		<choose>
+		    <when test="personId != null and personId != ''">
+		    , BOOK_PERS_REL R
+		    </when>
+		    <otherwise>
+		    , BOOK_MOV_REL R
+		    </otherwise>
+		</choose>
+		WHERE A.BOOK_ID = B.BOOK_ID
+		    AND A.BOOK_ID = R.BOOK_ID
+		<choose>
+		    <when test="personId != null and personId != ''">
+		    AND R.PERSON_ID = #{personId}
+		    </when>
+		    <otherwise>
+			AND  R.MOVIE_ID = #{movieId}
+			AND  R.MOVIE_SEQ = #{movieSeq}
+		    </otherwise>
+		</choose>
+		AND  B.POS_CLSS IN ('4','5','11','21')
+		AND (B.CLOSE_YN = 'N' OR B.CLOSE_YN IS NULL)
+
+    </sql>
+
+    <sql id="selectTheoryListQuery">
+		SELECT
+				<choose>
+				    <when test="personId != null and personId != ''">
+				    'P' GUBUN
+				    , R.PERSON_ID
+				    </when>
+				    <otherwise>
+				    'M' GUBUN
+				    , R.MOVIE_ID
+				    , R.MOVIE_SEQ
+				    </otherwise>
+				</choose>
+				, A.THEORY_NO --관리번호
+				, A.THEORY_NM --본제목
+				, A.TITLE_SUB --부제목
+				, A.TITLE_ETC --기타제목
+        		, A.TYPE_CLSS --형태
+				,A.DEGREE_CLSS --학위구분
+				,A.NATIONAL_CLSS --국가구분
+				,A.NATION_CLSS --발행국
+		        ,A.TH_PAGE --페이지
+		        ,A.PUB_YEAR --발행년도
+		        ,A.PUB_PLACE --발행처
+		        ,A.TH_MAJOR --학과/전공명
+		        ,A.WRITER --저자
+		        ,A.TH_TUTOR --지도교수
+		        ,A.THEME_DIV --주제구분
+		        ,A.LANG_CLSS --언어
+           		,B.POS_CLSS
+           		,A.CONTENS_CLSS --구분
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'E07' AND CODEINFO.CODE = A.TYPE_CLSS) TYPE_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'D12' AND CODEINFO.CODE = A.DEGREE_CLSS) DEGREE_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'A16' AND CODEINFO.CODE = A.NATIONAL_CLSS) NATIONAL_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'A13' AND CODEINFO.CODE = A.NATION_CLSS) NATION_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'D21' AND CODEINFO.CODE = B.POS_CLSS) POS_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'D11' AND CODEINFO.CODE = A.CONTENS_CLSS) CONTENS_CLSS_NM
+		FROM THEORY A, THEORY_DETAIL B
+		<choose>
+		    <when test="personId != null and personId != ''">
+		    , THEORY_PERS_REL R
+		    </when>
+		    <otherwise>
+		    , THEORY_MOV_REL R
+		    </otherwise>
+		</choose>
+	  WHERE A.THEORY_ID = B.THEORY_ID
+	  	  AND A.THEORY_ID = R.THEORY_ID
+	  	  <choose>
+		    <when test="personId != null and personId != ''">
+		    AND R.PERSON_ID = #{personId}
+		    </when>
+		    <otherwise>
+			AND  R.MOVIE_ID = #{movieId}
+			AND  R.MOVIE_SEQ = #{movieSeq}
+		    </otherwise>
+		</choose>
+	  	  AND B.POS_CLSS IN ('4','5','11','21')
+	  	  AND (B.CLOSE_YN = 'N' OR B.CLOSE_YN IS NULL)
+    </sql>
+
+    <sql id="selectCensorshipListQuery">
+		SELECT DTA.MOVIE_ID
+				,DTA.MOVIE_SEQ
+				,DTA.CENSOR_ALL_NO --관리번호
+				, DTA.TITLE --본제목
+				, DOC.TITLE_SUB --부제목
+				, DOC.TITLE_ETC --기타제목
+        		, DOC.KIND_CLSS --형태
+				, DOC.WRITE_DATE --작성일
+				, DOC.WRITER --작성자
+				, DOC.E_PAGE --페이지
+				, DOC.PLOT --첨부
+				, CASE WHEN (DTAD.FILE_NM IS NULL AND DOC.KIND_CLSS = '1')  THEN '문헌보존실'
+				       WHEN (DTAD.FILE_NM IS NOT NULL AND DOC.KIND_CLSS = '1')  THEN '문헌보존실, 영상도서관(멀티미디어석)'
+				       WHEN (DTAD.FILE_NM IS NOT NULL AND DOC.KIND_CLSS = '2')  THEN '영상도서관(멀티미디어석)'
+				       ELSE ''
+				  END AREA --보관위치
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'E07' AND CODEINFO.CODE = DOC.KIND_CLSS) KIND_CLSS_NM
+		FROM CENSORSHIP_ALL DTA , CENSORSHIP_DOC DOC ,CENSORSHIP_DETAIL DTAD
+		WHERE DTA.CENSOR_ALL_ID = DOC.CENSOR_ALL_ID
+		    AND DOC.CENSOR_ID = DTAD.CENSOR_ID
+		    AND DTA.MOVIE_ID = #{movieId}
+		    AND DTA.MOVIE_SEQ = #{movieSeq}
+		    AND (DTA.CLOSE_YN = 'N' OR DTA.CLOSE_YN IS NULL)
+		    AND (DTAD.FILE_NM IS NOT NULL OR DTA.POS_CLSS = '11')
+    </sql>
+
+    <sql id="selectNewsListQuery">
+		SELECT NEWS.MOVIE_ID
+				,NEWS.MOVIE_SEQ
+				,NEWS.NEWS_NO
+				, NEWS.NEWS_NM --본제목
+				, NEWS.TITLE_SUB --부제목
+				, NEWS.TITLE_ETC --기타제목
+       			, NEWS.KIND_CLSS --형태
+				, NEWS.NATION_CLSS --발행국
+				, NEWS.NATIONAL_CLSS --국가구분
+				, NEWS.N_PAGE --페이지
+				, NEWS.PUB_PLACE --배급
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'E07' AND CODEINFO.CODE = NEWS.KIND_CLSS) KIND_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'A16' AND CODEINFO.CODE = NEWS.NATIONAL_CLSS) NATIONAL_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'A13' AND CODEINFO.CODE = NEWS.NATION_CLSS) NATION_CLSS_NM
+		 FROM NEWS, NEWS_DETAIL
+		 	<if test="fedNo != null and fedNo != ''">
+		    , TBLFESTIVALDETAIL FD
+		    </if>
+		WHERE NEWS.NEWS_ID = NEWS_DETAIL.NEWS_ID
+		<choose>
+		    <when test="fedNo != null and fedNo != ''">
+		    AND NEWS.FED_NO = FD.FED_NO
+		    AND NEWS.FED_NO = #{fedNo}
+		    </when>
+		    <otherwise>
+		    AND NEWS.MOVIE_ID = #{movieId}
+			AND NEWS.MOVIE_SEQ = #{movieSeq}
+		    </otherwise>
+		</choose>
+		AND NEWS_DETAIL.POS_CLSS IN ('4','11','21')
+    </sql>
+
+    <sql id="selectEtcListQuery">
+		SELECT A.MOVIE_ID
+				 , A.MOVIE_SEQ
+				 , A.FED_NO
+				<choose>
+				    <when test="personId != null and personId != ''">
+				    , 'P' GUBUN
+				    , R.PERSON_ID
+				    </when>
+				    <when test="fedNo != null and fedNo != ''">
+				    , 'F' GUBUN
+				    </when>
+				    <otherwise>
+				    , 'M' GUBUN
+				    </otherwise>
+				</choose>
+				, A.ETC_NO
+				, A.TITLE  --본제목
+				, A.TITLE_SUB --부제목
+				, A.TITLE_ETC --기타제목
+				, A.TITLE_EQUAL
+				, A.KIND_CLSS --형태
+        		, A.DIV_CLSS --구분
+        		, A.NATION_CLSS --발행국
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'E07' AND CODEINFO.CODE = A.KIND_CLSS) KIND_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'D23' AND CODEINFO.CODE = A.DIV_CLSS) DIV_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'A13' AND CODEINFO.CODE = A.NATION_CLSS) NATION_CLSS_NM
+		FROM ETC_PR A, ETC_PR_DETAIL B
+		<if test="personId != null and personId != ''">
+			, ETC_PR_PERS_REL R
+		</if>
+
+		WHERE A.ETC_ID = B.ETC_ID
+		<choose>
+		    <when test="personId != null and personId != ''">
+		    AND A.ETC_ID = R.ETC_ID
+		    AND A.CONTENS_CLSS = '3' -- '1'이면 movie_id, movie_seq, '3'이면 etc_pr_pers_rel.person_id, '4'이면 etc_pr.fed_no,  '5'이면 etc_pr.OTHER_ID
+		    AND R.PERSON_ID = #{personId}
+		    </when>
+		    <when test="fedNo != null and fedNo != ''">
+		    AND A.CONTENS_CLSS = '4' -- '1'이면 movie_id, movie_seq, '3'이면 etc_pr_pers_rel.person_id, '4'이면 etc_pr.fed_no,  '5'이면 etc_pr.OTHER_ID
+		    AND A.FED_NO = #{fedNo}
+		    </when>
+		    <otherwise>
+		    AND A.CONTENS_CLSS = '1' -- '1'이면 movie_id, movie_seq, '3'이면 etc_pr_pers_rel.person_id, '4'이면 etc_pr.fed_no,  '5'이면 etc_pr.OTHER_ID
+		    AND A.MOVIE_ID = #{movieId}
+			AND A.MOVIE_SEQ = #{movieSeq}
+		    </otherwise>
+		</choose>
+		    AND B.POS_CLSS in ('4','5','11','21')
+		    AND (B.CLOSE_YN = 'N' or B.CLOSE_YN is null)
+
+    </sql>
+
+    <sql id="selectOstListQuery">
+		SELECT
+				<choose>
+				    <when test="personId != null and personId != ''">
+				    'P' GUBUN
+				    , R.PERSON_ID
+				    </when>
+				    <otherwise>
+				    'M' GUBUN
+				    , R.MOVIE_ID
+				    , R.MOVIE_SEQ
+				    </otherwise>
+				</choose>
+				, A.RECORD_ID
+				, A.RECORD_NO
+				, A.TITLE --본제목
+				, A.TITLE_SUB --부제목
+				, A.TITLE_ETC --기타제목
+				, A.RECORD_CLSS --종류
+				, A.DEV_CLSS --규격
+				, A.NATION_CLSS --제작국가
+				, A.PROD_NO --제품번호
+				, A.PROD_COMPY --제작사
+				, A.LABLE --레이블
+				, A.PROD_YEAR --제작년도
+				, A.OUTER --배급사
+				, A.TOTAL_TIME --총영주시간
+        		, A.BARCODE
+				, A.RECTYPE_CLSS1 --오디오채널
+				, A.RECTYPE_CLSS2 --녹음방식
+				, A.IMAGE --이미지
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'F09' AND CODEINFO.CODE = A.RECORD_CLSS) RECORD_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'F10' AND CODEINFO.CODE = A.DEV_CLSS) DEV_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'A23' AND CODEINFO.CODE = A.RECTYPE_CLSS1) RECTYPE_CLSS1_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'F04' AND CODEINFO.CODE = A.RECTYPE_CLSS2) RECTYPE_CLSS2_NM
+		FROM RECORD A, RECORD_IN B
+		<choose>
+		    <when test="personId != null and personId != ''">
+		    , RECORD_CREDIT R
+		    </when>
+		    <otherwise>
+		    , REC_MOVIE_REL R
+		    </otherwise>
+		</choose>
+	WHERE A.RECORD_ID = B.RECORD_ID
+		AND A.RECORD_ID = R.RECORD_ID
+		<choose>
+		    <when test="personId != null and personId != ''">
+		    AND R.PERSON_ID = #{personId}
+		    </when>
+		    <otherwise>
+			AND  R.MOVIE_ID = #{movieId}
+			AND  R.MOVIE_SEQ = #{movieSeq}
+		    </otherwise>
+		</choose>
+		AND A.GENRE_CLSS = 'TM'
+		AND B.POS_CLSS IN ('4','12')
+		AND (B.CLOSE_YN IS NULL OR B.CLOSE_YN = 'N')
+    </sql>
+
+    <sql id="selectEquipListQuery">
+    	SELECT T1.EQUIP_ID
+				, T1.EQUIP_NO
+				, T3.EQUIP_DETAIL_ID
+				, T3.EQUIP_DETAIL_NO
+				<choose>
+				    <when test="fedNo != null and fedNo != ''">
+						, 'F' GUBUN
+						, T2.FED_NO
+				    </when>
+				    <when test="personId != null and personId != ''">
+					    , 'P' GUBUN
+					    , T2.PERSON_ID
+				    </when>
+				    <otherwise>
+					    , 'M' GUBUN
+					    , T2.MOVIE_ID
+					    , T2.MOVIE_SEQ
+				    </otherwise>
+				</choose>
+				, T1.TITLE --본제목
+				, T1.TITLE_SUB --부제목
+				, T1.TITLE_ETC --기타제목
+				, T1.DIV1_CLSS --구분
+				, T1.DIV2_CLSS --분류
+				, T1.WEIGHT --무게
+				, T1.COUNTRY --제작국가
+				, T1.CUBIC_CLSS --규격
+				, T1.COMPONENT --구성품
+				, T1.MATERIAL_CLSS --재질
+				, T1.REMARKS --비고
+				, T1.IMAGE_NM
+				, T1.EQUIP_CONTENT --내용
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'L07' AND CODEINFO.CODE = T1.DIV1_CLSS) DIV1_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'L02' AND CODEINFO.CODE = T1.DIV2_CLSS) DIV2_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'L04' AND CODEINFO.CODE = T1.CUBIC_CLSS) CUBIC_CLSS_NM
+         		, (SELECT  WM_CONCAT(EQUIP_FILE.FILE_NM)
+    				 FROM EQUIP_FILE
+   					WHERE EQUIP_FILE.EQUIP_ID = T1.EQUIP_ID
+ 					GROUP BY EQUIP_FILE.EQUIP_ID
+ 					) FILE_NM --이미지
+				FROM EQUIPMENT T1, EQUIP_DETAIL T3
+		<choose>
+		    <when test="fedNo != null and fedNo != ''">
+		    , EQUIP_FEST_REL T2
+		    </when>
+		    <when test="personId != null and personId != ''">
+		    , EQUIP_PERS_REL T2
+		    </when>
+		    <otherwise>
+		    , EQUIP_MOV_REL T2
+		    </otherwise>
+		</choose>
+		    WHERE T1.EQUIP_ID = T2.EQUIP_ID
+				AND T1.EQUIP_ID = T3.EQUIP_ID
+				AND T3.POS_CLSS IN ('17','18','19','21')
+				AND (T3.CLOSE_YN = 'N' OR T3.CLOSE_YN IS NULL)
+		<choose>
+		    <when test="fedNo != null and fedNo != ''">
+				AND T2.FED_NO = #{fedNo}
+		    </when>
+		    <when test="personId != null and personId != ''">
+			    AND T2.PERSON_ID = #{personId}
+		    </when>
+		    <otherwise>
+			    AND T2.MOVIE_ID = #{movieId}
+			    AND T2.MOVIE_SEQ = #{movieSeq}
+		    </otherwise>
+		</choose>
+
+    </sql>
+
+	<select id="selectOwnDataCount" resultType="totalCountVO">
+		SELECT (FILMCNT + DCINEMACNT + TAPECNT + DISKCNT + MOVIECNT + VODCNT) MTOTAL
+		         , FILMCNT
+		         , DCINEMACNT
+		         , TAPECNT
+		         , DISKCNT
+		         , MOVIECNT
+		         , VODCNT
+		         , (POSTERCNT+STILCNT) ITOTAL
+		         , POSTERCNT
+		         , STILCNT
+		         , (SCENARIOCNT + HANDBILLCNT + BOOKCNT + THEORYCNT + CENSORSHIPCNT + NEWSCNT + ETCCNT) BTOTAL
+		         , SCENARIOCNT
+		         , HANDBILLCNT
+		         , BOOKCNT
+		         , THEORYCNT
+		         , CENSORSHIPCNT
+		         , NEWSCNT
+		         , ETCCNT
+		         , (OSTCNT + EQUIPCNT) ETOTAL
+		         , OSTCNT
+		         , EQUIPCNT
+		  FROM ( SELECT
+						( --필름
+						 	<include refid="countHeaderQuery" />
+					        <include refid="selectFilmListQuery"/>
+					        <include refid="countTailQuery" />
+						 ) FILMCNT
+						,( --D시네마
+						 	<include refid="countHeaderQuery" />
+					        <include refid="selectDcinemaListQuery"/>
+					        <include refid="countTailQuery" />
+						 ) dCinemaCnt
+						,( --테이프
+						 	<include refid="countHeaderQuery" />
+					        <include refid="selectTapeListQuery"/>
+					        <include refid="countTailQuery" />
+						 ) tapeCnt
+						,( --디스크
+						 	<include refid="countHeaderQuery" />
+					        <include refid="selectDiskListQuery"/>
+					        <include refid="countTailQuery" />
+						 ) diskCnt
+						,( --동영상
+						 	<include refid="countHeaderQuery" />
+					        <include refid="selectMultiListQuery"/>
+					        <include refid="countTailQuery" />
+						 ) movieCnt
+						,( --VOD
+						 	<include refid="countHeaderQuery" />
+					        <include refid="selectVodListQuery"/>
+					        <include refid="countTailQuery" />
+						 ) vodCnt
+						,( --포스터
+						 	<include refid="countHeaderQuery" />
+					        <include refid="selectPosterListQuery"/>
+					        <include refid="countTailQuery" />
+						 ) posterCnt
+						,( --스틸
+						 	<include refid="countHeaderQuery" />
+					        <include refid="selectStillListQuery"/>
+					        <include refid="countTailQuery" />
+						 ) stilCnt
+						,( --시나리오
+						 	<include refid="countHeaderQuery" />
+					        <include refid="selectScenarioListQuery"/>
+					        <include refid="countTailQuery" />
+						 ) scenarioCnt
+						,( --전단
+						 	<include refid="countHeaderQuery" />
+					        <include refid="selectHandbillListQuery"/>
+					        <include refid="countTailQuery" />
+						 ) handbillCnt
+						,( --도서
+						 	<include refid="countHeaderQuery" />
+					        <include refid="selectBookListQuery"/>
+					        <include refid="countTailQuery" />
+						 ) bookCnt
+						,( --논문
+						 	<include refid="countHeaderQuery" />
+					        <include refid="selectTheoryListQuery"/>
+					        <include refid="countTailQuery" />
+						 ) theoryCnt
+						,( --심의자료
+						 	<include refid="countHeaderQuery" />
+					        <include refid="selectCensorshipListQuery"/>
+					        <include refid="countTailQuery" />
+						 ) censorshipCnt
+						,(  --뉴스
+						 	<include refid="countHeaderQuery" />
+					        <include refid="selectNewsListQuery"/>
+					        <include refid="countTailQuery" />
+						 ) newsCnt
+						,( --기타자료
+						 	<include refid="countHeaderQuery" />
+					        <include refid="selectEtcListQuery"/>
+					        <include refid="countTailQuery" />
+						 ) etcCnt
+						,( --OST
+						 	<include refid="countHeaderQuery" />
+					        <include refid="selectOstListQuery"/>
+					        <include refid="countTailQuery" />
+						 ) ostCnt
+						,(  --박물류
+						 	<include refid="countHeaderQuery" />
+					        <include refid="selectEquipListQuery"/>
+					        <include refid="countTailQuery" />
+						 ) equipCnt
+				FROM DUAL
+			)
+    </select>
+
+    <select id="selectFilmListCount" parameterType="hashMap" resultType="int">
+	    <include refid="countHeaderQuery" />
+	    <include refid="selectFilmListQuery"/>
+	    <include refid="countTailQuery" />
+	</select>
+
+	<select id="selectFilmPageList" parameterType="hashMap" resultType="filmVO">
+	    <include refid="pagingHeaderQuery" />
+	    <include refid="selectFilmListQuery"/>
+	    <include refid="pagingTailQuery" />
+	</select>
+
+	<select id="selectDcinemaListCount" parameterType="hashMap" resultType="int">
+	    <include refid="countHeaderQuery" />
+	    <include refid="selectDcinemaListQuery"/>
+	    <include refid="countTailQuery" />
+	</select>
+
+	<select id="selectDcinemaPageList" parameterType="hashMap" resultType="dcinemaVO">
+	    <include refid="pagingHeaderQuery" />
+	    <include refid="selectDcinemaListQuery"/>
+	    <include refid="pagingTailQuery" />
+	</select>
+
+	<select id="selectTapeListCount" parameterType="hashMap" resultType="int">
+	    <include refid="countHeaderQuery" />
+	    <include refid="selectTapeListQuery"/>
+	    <include refid="countTailQuery" />
+	</select>
+
+	<select id="selectTapePageList" parameterType="hashMap" resultType="tapeDiskVO">
+	    <include refid="pagingHeaderQuery" />
+	    <include refid="selectTapeListQuery"/>
+	    <include refid="pagingTailQuery" />
+	</select>
+
+	<select id="selectDiskListCount" parameterType="hashMap" resultType="int">
+	    <include refid="countHeaderQuery" />
+	    <include refid="selectDiskListQuery"/>
+	    <include refid="countTailQuery" />
+	</select>
+
+	<select id="selectDiskPageList" parameterType="hashMap" resultType="tapeDiskVO">
+	    <include refid="pagingHeaderQuery" />
+	    <include refid="selectDiskListQuery"/>
+	    <include refid="pagingTailQuery" />
+	</select>
+
+	<select id="selectMultiListCount" parameterType="hashMap" resultType="int">
+	    <include refid="countHeaderQuery" />
+	    <include refid="selectMultiListQuery"/>
+	    <include refid="countTailQuery" />
+	</select>
+
+	<select id="selectMultiPageList" parameterType="hashMap" resultType="multiVO">
+	    <include refid="pagingHeaderQuery" />
+	    <include refid="selectMultiListQuery"/>
+	    <include refid="pagingTailQuery" />
+	</select>
+
+	<select id="selectVodListCount" parameterType="hashMap" resultType="int">
+	    <include refid="countHeaderQuery" />
+	    <include refid="selectVodListQuery"/>
+	    <include refid="countTailQuery" />
+	</select>
+
+	<select id="selectVodPageList" parameterType="hashMap" resultType="vodVO">
+	    <include refid="pagingHeaderQuery" />
+	    <include refid="selectVodListQuery"/>
+	    <include refid="pagingTailQuery" />
+	</select>
+
+	<select id="selectPosterListCount" parameterType="hashMap" resultType="int">
+	    <include refid="countHeaderQuery" />
+	    <include refid="selectPosterListQuery"/>
+	    <include refid="countTailQuery" />
+	</select>
+
+	<select id="selectPosterPageList" parameterType="hashMap" resultType="posterVO">
+	    <include refid="pagingHeaderQuery" />
+	    <include refid="selectPosterListQuery"/>
+	    <include refid="pagingTailQuery" />
+	</select>
+
+	<select id="selectStillListCount" parameterType="hashMap" resultType="int">
+	    <include refid="countHeaderQuery" />
+	    <include refid="selectStillListQuery"/>
+	    <include refid="countTailQuery" />
+	</select>
+
+	<select id="selectStillPageList" parameterType="hashMap" resultType="stillVO">
+	    <include refid="pagingHeaderQuery" />
+	    <include refid="selectStillListQuery"/>
+	    <include refid="pagingTailQuery" />
+	</select>
+
+	<select id="selectScenarioListCount" parameterType="hashMap" resultType="int">
+	    <include refid="countHeaderQuery" />
+	    <include refid="selectScenarioListQuery"/>
+	    <include refid="countTailQuery" />
+	</select>
+
+	<select id="selectScenarioPageList" parameterType="hashMap" resultType="scenarioVO">
+	    <include refid="pagingHeaderQuery" />
+	    <include refid="selectScenarioListQuery"/>
+	    <include refid="pagingTailQuery" />
+	</select>
+
+	<select id="selectHandbillListCount" parameterType="hashMap" resultType="int">
+	    <include refid="countHeaderQuery" />
+	    <include refid="selectHandbillListQuery"/>
+	    <include refid="countTailQuery" />
+	</select>
+
+	<select id="selectHandbillPageList" parameterType="hashMap" resultType="handbillVO">
+	    <include refid="pagingHeaderQuery" />
+	    <include refid="selectHandbillListQuery"/>
+	    <include refid="pagingTailQuery" />
+	</select>
+
+	<select id="selectBookListCount" parameterType="hashMap" resultType="int">
+	    <include refid="countHeaderQuery" />
+	    <include refid="selectBookListQuery"/>
+	    <include refid="countTailQuery" />
+	</select>
+
+	<select id="selectBookPageList" parameterType="hashMap" resultType="bookVO">
+	    <include refid="pagingHeaderQuery" />
+	    <include refid="selectBookListQuery"/>
+	    <include refid="pagingTailQuery" />
+	</select>
+
+	<select id="selectTheoryListCount" parameterType="hashMap" resultType="int">
+	    <include refid="countHeaderQuery" />
+	    <include refid="selectTheoryListQuery"/>
+	    <include refid="countTailQuery" />
+	</select>
+
+	<select id="selectTheoryPageList" parameterType="hashMap" resultType="theoryVO">
+	    <include refid="pagingHeaderQuery" />
+	    <include refid="selectTheoryListQuery"/>
+	    <include refid="pagingTailQuery" />
+	</select>
+
+	<select id="selectCensorshipListCount" parameterType="hashMap" resultType="int">
+	    <include refid="countHeaderQuery" />
+	    <include refid="selectCensorshipListQuery"/>
+	    <include refid="countTailQuery" />
+	</select>
+
+	<select id="selectCensorshipPageList" parameterType="hashMap" resultType="censorshipVO">
+	    <include refid="pagingHeaderQuery" />
+	    <include refid="selectCensorshipListQuery"/>
+	    <include refid="pagingTailQuery" />
+	</select>
+
+	<select id="selectNewsListCount" parameterType="hashMap" resultType="int">
+	    <include refid="countHeaderQuery" />
+	    <include refid="selectNewsListQuery"/>
+	    <include refid="countTailQuery" />
+	</select>
+
+	<select id="selectNewsPageList" parameterType="hashMap" resultType="newsVO">
+	    <include refid="pagingHeaderQuery" />
+	    <include refid="selectNewsListQuery"/>
+	    <include refid="pagingTailQuery" />
+	</select>
+
+	<select id="selectEtcListCount" parameterType="hashMap" resultType="int">
+	    <include refid="countHeaderQuery" />
+	    <include refid="selectEtcListQuery"/>
+	    <include refid="countTailQuery" />
+	</select>
+
+	<select id="selectEtcPageList" parameterType="hashMap" resultType="etcVO">
+	    <include refid="pagingHeaderQuery" />
+	    <include refid="selectEtcListQuery"/>
+	    <include refid="pagingTailQuery" />
+	</select>
+
+	<select id="selectOstListCount" parameterType="hashMap" resultType="int">
+	    <include refid="countHeaderQuery" />
+	    <include refid="selectOstListQuery"/>
+	    <include refid="countTailQuery" />
+	</select>
+
+	<select id="selectOstPageList" parameterType="hashMap" resultType="ostVO">
+	    <include refid="pagingHeaderQuery" />
+	    <include refid="selectOstListQuery"/>
+	    <include refid="pagingTailQuery" />
+	</select>
+
+	<select id="selectEquipListCount" parameterType="hashMap" resultType="int">
+	    <include refid="countHeaderQuery" />
+	    <include refid="selectEquipListQuery"/>
+	    <include refid="countTailQuery" />
+	</select>
+
+	<select id="selectEquipPageList" parameterType="hashMap" resultType="equipVO">
+	    <include refid="pagingHeaderQuery" />
+	    <include refid="selectEquipListQuery"/>
+	    <include refid="pagingTailQuery" />
+	</select>
+
+	<select id="selectPosterStillList" parameterType="hashMap" resultType="posterStillVO">
+		SELECT T3.*
+		   FROM (
+					SELECT T1.MOVIE_ID
+					       , T1.MOVIE_SEQ
+					       , T1.FED_NO
+					       , TO_CHAR(T1.POSTER_ID) POSTER_STILL_ID
+					       , TO_CHAR(T1.POSTER_NO) POSTER_STILL_NO
+					       , 'P' POSTER_STILL_GUBUN
+					       , T1.IMGID
+					       , T1.PROHIBIT19
+					       , T1.MAIN_TITLE
+						   , T1.TITLE_SUB
+						   , T1.TITLE_ETC
+						   , T1.IMAGE_NM
+						   , T1.POST_YEAR
+					FROM (<include refid="selectPosterListQuery"/>)T1
+
+					UNION ALL
+
+					SELECT T2.MOVIE_ID
+					       , T2.MOVIE_SEQ
+					       , T2.FED_NO
+					       , TO_CHAR(T2.STILL_NO) POSTER_STILL_ID
+					       , TO_CHAR(T2.STILL_DETAIL_NO) POSTER_STILL_NO
+					       , 'S' POSTER_STILL_GUBUN
+					       , T2.IMGID
+					       , T2.PROHIBIT19
+					       , T2.MAIN_TITLE
+						   , '' TITLE_SUB
+						   , '' TITLE_ETC
+						   , T2.IMAGE_NM
+						   , T2.ST_YEAR POST_YEAR
+					FROM (<include refid="selectStillListQuery"/>)T2
+					)T3
+		ORDER BY T3.POST_YEAR DESC, T3.FED_NO DESC
+	</select>
+</mapper>

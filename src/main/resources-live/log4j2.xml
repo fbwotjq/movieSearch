@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration monitorInterval="1">
+    <Appenders>
+        <Console name="console" target="SYSTEM_OUT">
+            <PatternLayout pattern="[KMDB_HB] %d %5p [%c:%L] %m%n"/>
+        </Console>
+
+        <RollingFile name="rollingFile" fileName="C:\logs\KMDB_HF\kmdb_hf_log.log" filePattern="C:\logs\KMDB_HF\kmdb_hf_log.log.%d{yyyy-MM-dd}">
+            <ThresholdFilter level="ERROR" onMatch="ACCEPT" onMismatch="DENY"/>
+  			<PatternLayout pattern="[KF_HB] %d %5p [%c:%L] %m%n" />
+  			<Policies>
+   				<!-- interval(default 1)이므로 1초 간격으로 rolling 수행 -->
+   				<TimeBasedTriggeringPolicy />
+  			</Policies>
+ 		</RollingFile>
+    </Appenders>
+    <Loggers>
+        <Logger name="egovframework.ag" level="OFF" additivity="false">
+            <AppenderRef ref="console"/>
+        </Logger>
+        <Logger name="org.springframework.security" level="ERROR" additivity="false">
+            <AppenderRef ref="console"/>
+        </Logger>
+        <Logger name="org.mybatis" level="OFF" additivity="false">
+            <AppenderRef ref="console" />
+        </Logger>
+        <Root level="ERROR">
+            <AppenderRef ref="console" />
+        </Root>
+    </Loggers>
+</Configuration>

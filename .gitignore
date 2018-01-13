@@ -1,0 +1,8 @@
+.svn/
+.classpath
+.project
+.settings/
+target/
+.idea/
+KMDB_HF.iml
+.DS_Store

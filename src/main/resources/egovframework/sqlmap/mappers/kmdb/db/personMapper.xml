@@ -1,0 +1,378 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="egovframework.ag.homepage.db.service.PersonDao">
+	<sql id="countHeaderQuery">
+		SELECT COUNT(1) AS TOTAL_COUNT FROM (
+    </sql>
+
+    <sql id="countTailQuery">
+        )
+    </sql>
+
+    <sql id="pagingHeaderQuery">
+		SELECT * FROM (SELECT ROWNUM AS RNUM, Z.* FROM (
+    </sql>
+
+    <sql id="pagingTailQuery">
+        ) Z WHERE ROWNUM &lt;= #{_page} * #{_pageSize}) WHERE RNUM &gt; (#{_page} - 1) * #{_pageSize}
+    </sql>
+
+    <select id="selectPersonInfo" parameterType="string" resultType="personVo">
+		SELECT PERSON_ID
+		      ,KORNM
+		      ,CHINM
+		      ,ENGNM
+		      ,KORNM_R
+		      ,CHINM_R
+		      ,ENGNM_R
+		      ,BIRTH_DATE
+		      ,DEATH_DATE
+		      ,BIRTH_CLSS
+		      ,LIFE_YN
+		      ,OPEN_YN
+		      ,HEIGHT
+		      ,ADDR
+		      ,SIGN_POS
+		      ,SIGN_NM
+		      ,DEBUTYEAR
+		      ,DEBUTPROD
+		      ,AWARD_MOVIES
+		      ,AWARD_ETC
+		      ,CAREER
+		      ,WRITINGS
+		      ,ENTRANCEBACK
+		      ,MAJOR_MOVIES
+		      ,ATTAPRODRESO
+		      ,SPEECH
+		      ,SIGHTS
+		      ,STYLECAST
+		      ,ONESINTROHOBBY
+		      ,NOTICE_STAFF
+		      ,SUPPORT_STAFF
+		      ,LIKE_STAFF
+		      ,ADVICE
+		      ,BEST_MOVIE
+		      ,MEAN
+		      ,OBSTRUCTION
+		      ,MAJOR_ETC
+		FROM PERSON
+		WHERE PERSON_ID = #{personId}
+    </select>
+
+    <select id="selectSpecFieldList" parameterType="personVo" resultType="string">
+		SELECT FIELD_NM
+		FROM (SELECT B.FIELD_NM
+		            ,B.DIV
+		            ,DECODE(A.REP_DIV, 'Y', 1, 2) ORDERNO
+		            ,B.FIELD_NO
+		      FROM PERSON_FIELD A, FIELD_CODE B
+		      WHERE A.FIELD_NO = B.FIELD_NO
+		            AND A.PERSON_ID = #{personId})
+		ORDER BY ORDERNO, FIELD_NO
+    </select>
+
+    <select id="selectActYearList" parameterType="personVo" resultType="string">
+		SELECT PROD_YEAR
+		FROM (SELECT TRUNC(RTRIM(NVL(B.PROD_YEAR, 0)), -1) PROD_YEAR
+		      FROM CREDIT_MOVIE A, MOVIE_SE B
+		      WHERE A.MOVIE_ID = B.MOVIE_ID
+		            AND A.MOVIE_SEQ = B.MOVIE_SEQ
+		            AND A.PERSON_ID = #{personId}
+		      GROUP BY TRUNC(RTRIM(NVL(B.PROD_YEAR, 0)), -1)
+		      ORDER BY PROD_YEAR)
+		WHERE PROD_YEAR > 0
+    </select>
+
+    <select id="selectHeadImageInfo" parameterType="personVo" resultType="personImgVo">
+		SELECT STILL_ID
+		      ,STILL_NM
+		      ,IMAGE_NM
+		      ,PREPERSON_ID
+		      ,ORD
+		      ,HSIZE
+		      ,VSIZE
+		      ,MAIN_JPG
+		FROM (SELECT STILL_ID
+		            ,STILL_NM
+		            ,IMAGE_NM
+		            ,PREPERSON_ID
+		            ,ORD
+		            ,HSIZE
+		            ,VSIZE
+		            ,MAIN_JPG
+		      FROM (SELECT B.STILL_ID
+		                  ,B.STILL_NM
+		                  ,B.IMAGE_NM
+		                  ,LPAD(B.STILL_T_NO, 8, '0') PREPERSON_ID
+		                  ,CASE B.CONTENS_CLSS WHEN '3' THEN 1 ELSE 2 END ORD
+		                  ,B.HSIZE
+		                  ,B.VSIZE
+		                  ,B.MAIN_JPG
+		            FROM STILL_PERS_REL A, STILL B, STILL_DETAIL C
+		            WHERE A.STILL_ID = B.STILL_ID
+		                  AND B.STILL_ID = C.STILL_ID
+		                  AND A.PERSON_ID = #{personId}
+		            ORDER BY ORD, B.STILL_ID DESC)
+		      WHERE MAIN_JPG IS NOT NULL
+		      ORDER BY MAIN_JPG DESC, STILL_ID)
+		WHERE ROWNUM = 1
+    </select>
+
+    <select id="selectImageList" parameterType="string" resultType="personImgVo">
+		SELECT B.STILL_ID
+		      ,B.STILL_NM
+		      ,B.IMAGE_NM
+		      ,LPAD(B.STILL_T_NO, 8, '0') PREPERSON_ID
+		      ,CASE B.CONTENS_CLSS WHEN '3' THEN 1 ELSE 2 END ORD
+		      ,B.HSIZE
+		      ,B.VSIZE
+		      ,B.MAIN_JPG
+		FROM STILL_PERS_REL A, STILL B, STILL_DETAIL C
+		WHERE A.STILL_ID = B.STILL_ID
+		      AND B.STILL_ID = C.STILL_ID
+		      AND A.PERSON_ID = #{personId}
+		      AND C.OPEN_YN = 'Y'
+		ORDER BY B.STILL_ID DESC
+    </select>
+
+    <select id="selectMulList" parameterType="map" resultType="personMulVo">
+		SELECT C.MUL_ID
+		      ,C.FILE_ID
+		      ,LPAD(A.MUL_ID, 8, '0') IMGID
+		      ,A.IMAGE_NM
+		      ,C.MULTOR_NM
+		      ,A.MUL_TITLE
+		      ,SCREEN.CODE_NM CLASSNAME
+		      ,A.TITLE_ETC
+		      ,A.MUL_YEAR
+		      ,NVL(A.RUNTIME, 0) AS RUNTIME
+		      ,C.H_SIZE
+		      ,C.V_SIZE
+		      ,C.USE_CLSS
+		      ,NVL(A.SECONDS, 0) SECONDS
+		FROM MULTI_PERSON_REL B
+		    ,MULTI_NEW A
+		    ,MULTI_FILE C
+		    ,(SELECT CODE, CODE_NM
+		      FROM CODEINFO
+		      WHERE DIV_ID = 'A09') SCREEN
+		  WHERE A.MSCREEN_CLSS = SCREEN.CODE(+)
+		    AND A.MUL_ID = B.MUL_ID
+		    AND A.MUL_ID = C.MUL_ID
+		    AND C.USE_CLSS = '1'
+		    AND C.OPEN_YN = 'Y'
+		    AND C.F_SIZE > 0
+		    AND SCREEN.CODE_NM &lt;&gt; '본편'
+		   AND B.PERSON_ID = #{personId}
+           AND A.MSCREEN_CLSS  &lt;&gt;  '2'
+    </select>
+
+    <select id="selectFilmoList" parameterType="string" resultType="personFilmoVo">
+		SELECT B.MOVIE_ID
+		      ,B.MOVIE_SEQ
+		      ,B.TITLE
+		      ,B.DIRECTOR
+		      ,B.PROD_YEAR
+		      ,B.TYPE_CLSS
+		      ,A.STAFF
+		      ,COUNT(*) OVER (PARTITION BY C.CREDIT_ID) AS CREDIT_GROUP_CNT
+		      ,DECODE(C.CREDIT_NM, '출연', '배우', C.CREDIT_NM) CREDIT_NM
+		      ,C.CREDIT_ID
+		      ,C.CREDIT_ENG
+		      ,B.PATTEN_CLSS
+		      ,NVL(D.CODE_NM, '') AS PATTEN_CLSS_NM
+		      ,A.UNCREDITED
+		FROM CREDIT_MOVIE A
+		    ,MOVIE_SE B
+		    ,CREDIT_MANG C
+		    ,CODEINFO D
+		WHERE A.MOVIE_ID = B.MOVIE_ID
+		      AND A.MOVIE_SEQ = B.MOVIE_SEQ
+		      AND A.CREDIT_ID = C.CREDIT_ID
+		      AND D.DIV_ID = 'A01'
+		      AND B.PATTEN_CLSS = D.CODE
+		      AND A.PERSON_ID = #{personId}
+		      AND A.OPEN_YN = 'Y'
+		ORDER BY CREDIT_NM, PROD_YEAR DESC
+    </select>
+
+    <select id="selectFestivalAwardsList" parameterType="string" resultType="personFestivalAwardsVo">
+		SELECT D.FED_YEAR
+		      ,B.NAME_KOR
+		      ,D.FED_TIME
+		      ,A.FEA_AWORD
+		      ,A.FEA_MOVIE
+		      ,A.FEA_MOVIECODE
+		      ,C.F_PERS_NAME
+		      ,C.F_PERS_ID
+		      ,B.FE_NO
+		      ,A.FED_NO
+		FROM TBLFESTIVALAWORD A
+		    ,TBLFESTIVAL B
+		    ,TBLFESTIVAL_PERS_REL C
+		    ,TBLFESTIVALDETAIL D
+		WHERE A.FED_NO = D.FED_NO
+		      AND A.F_AWARD_ID = C.F_AWARD_ID
+		      AND B.FE_NO = D.FE_NO
+		      AND C.F_PERS_ID = #{personId}
+		      AND B.OPEN_YN = 'Y'
+		ORDER BY D.FED_YEAR
+    </select>
+
+    <select id="selectPersonEtcTitleList" parameterType="string" resultType="string">
+		SELECT TITLE_NAME
+		FROM PERSON_TITLES
+		WHERE PERSON_ID = #{personId}
+    </select>
+
+
+
+    <sql id="filmCntQuery">
+		SELECT A.MOVIE_ID, A.MOVIE_SEQ, COUNT(1) AS FILM_CNT
+		      FROM MOVIE_SE A, F_MAIN B, F_SET C
+		      WHERE A.MOVIE_ID = B.MOVIE_ID
+		            AND A.MOVIE_SEQ = B.MOVIE_SEQ
+		            AND A.MOVIE_ID = C.MOVIE_ID
+		            AND A.MOVIE_SEQ = C.MOVIE_SEQ
+		            AND B.F_UNIT = C.F_UNIT
+		            AND B.F_ITEM = C.F_ITEM
+		            AND B.F_COLOR = C.F_COLOR
+		            AND (A.MOVIE_ID = 'K'
+		                 OR A.MOVIE_ID = 'A'
+		                 OR A.MOVIE_ID = 'F'
+		                 OR A.MOVIE_ID = 'B')
+		            AND (A.PATTEN_CLSS IN ('1'
+		                                  ,'2'
+		                                  ,'3'
+		                                  ,'4'
+		                                  ,'5'
+		                                  ,'6'
+		                                  ,'7'
+		                                  ,'8'
+		                                  ,'9'
+		                                  ,'10'
+		                                  ,'11'
+		                                  ,'12'
+		                                  ,'14'
+		                                  ,'15'
+		                                  ,'17'
+		                                  ,'18'
+		                                  ,'19'))
+		            AND (B.F_ITEM IN ('O'
+		                             ,'D'
+		                             ,'M'
+		                             ,'P'))
+		            AND (C.IPGO > 0
+		                 OR C.JAMO1 > 0
+		                 OR C.WITAK1 > 0)
+		            AND (NVL(C.OPEN_YN, 'N') = 'N')
+		      GROUP BY A.MOVIE_ID, A.MOVIE_SEQ
+    </sql>
+
+    <sql id="dCineCntQuery">
+		SELECT A.MOVIE_ID, A.MOVIE_SEQ, COUNT(1) AS D_CINE_CNT
+		FROM DCINEMA_MAIN A, DCINEMA_DETAIL B, MOVIE_SE C
+		WHERE A.D_MAIN_ID = B.D_MAIN_ID
+		      AND A.SCREEN_CLSS = '1'
+		      AND NVL(B.OPEN_YN, 'N') &lt;&gt; 'Y'
+		      AND A.MOVIE_ID = C.MOVIE_ID
+		      AND A.MOVIE_SEQ = C.MOVIE_SEQ
+		GROUP BY A.MOVIE_ID, A.MOVIE_SEQ
+    </sql>
+
+    <sql id="videoCntQuery">
+		SELECT B.MOVIE_ID
+		      ,B.MOVIE_SEQ
+		      ,A.FORM_CLSS
+		      ,COUNT(*) AS VIDEO_CNT
+		FROM VIDEO A, VIDEO_MOV_REL B, VIDEO_DETAIL C
+		WHERE A.VIDEO_ID = B.VIDEO_ID
+		      AND A.VIDEO_ID = C.VIDEO_ID
+		      AND C.POS_CLSS = '4'
+		      AND A.FORM_CLSS IN ('D', 'T')
+		GROUP BY B.MOVIE_ID, B.MOVIE_SEQ, A.FORM_CLSS
+    </sql>
+
+    <sql id="vodCntQuery">
+		SELECT B.MOVIE_ID, B.MOVIE_SEQ, COUNT(1) AS VOD_CNT
+		FROM MULTI_NEW A, MULTI_MOVIE_REL B, MULTI_FILE C
+		WHERE A.MUL_ID = B.MUL_ID
+		      AND A.MUL_ID = C.MUL_ID
+		      AND C.USE_CLSS = '1'
+		      AND C.OPEN_YN = 'Y'
+		      AND C.F_SIZE > 0
+		      AND A.MSCREEN_CLSS = 2
+		GROUP BY B.MOVIE_ID, B.MOVIE_SEQ
+    </sql>
+
+    <sql id="snariCntQuery">
+		SELECT A.MOVIE_ID, A.MOVIE_SEQ, COUNT(1) AS SNARI_CNT
+		FROM SCENARIO A, SCENARIO_DETAIL B
+		WHERE A.SCENARIO_ID = B.SCENARIO_ID
+		      AND ((B.FILE_NM IS NOT NULL
+		            AND B.F_OPEN_YN = 'Y')
+		           OR (B.POS_CLSS IN ('3', '4', '5')))
+		GROUP BY A.MOVIE_ID, A.MOVIE_SEQ
+    </sql>
+
+    <select id="selectFilmoDetailList" parameterType="string" resultType="personFilmoDetailVo">
+        SELECT B.MOVIE_ID
+              ,B.MOVIE_SEQ
+              ,B.TITLE
+              ,B.DIRECTOR
+              ,B.PROD_YEAR
+              ,B.TYPE_CLSS
+              ,A.STAFF
+              ,COUNT(*) OVER (PARTITION BY C.CREDIT_ID) AS CREDIT_GROUP_CNT
+              ,DECODE(C.CREDIT_NM, '출연', '배우', C.CREDIT_NM) CREDIT_NM
+              ,C.CREDIT_ID
+              ,C.CREDIT_ENG
+              ,B.PATTEN_CLSS
+              ,NVL(D.CODE_NM, '') AS PATTEN_CLSS_NM
+              ,A.UNCREDITED
+              ,NVL(FILM_CNT.FILM_CNT, 0) AS FILM_CNT
+              ,NVL(D_CINE_CNT.D_CINE_CNT, 0) AS CINE_CNT
+              ,NVL(DISK_CNT.VIDEO_CNT, 0) AS DISK_CNT
+              ,NVL(TAPE_CNT.VIDEO_CNT, 0) AS TAPE_CNT
+              ,NVL(VOD_CNT.VOD_CNT, 0) AS VOD_CNT
+              ,NVL(SNARI_CNT.SNARI_CNT, 0) AS SNARI_CNT
+        FROM CREDIT_MOVIE A
+            ,MOVIE_SE B
+            ,CREDIT_MANG C
+            ,CODEINFO D
+            ,(<include refid="filmCntQuery"/>) FILM_CNT
+            ,(<include refid="dCineCntQuery"/>) D_CINE_CNT
+            ,(SELECT * FROM (<include refid="videoCntQuery"/>) WHERE FORM_CLSS = 'D') DISK_CNT
+            ,(SELECT * FROM (<include refid="videoCntQuery"/>) WHERE FORM_CLSS = 'T') TAPE_CNT
+            ,(<include refid="vodCntQuery"/>) VOD_CNT
+            ,(<include refid="snariCntQuery"/>) SNARI_CNT
+        WHERE A.MOVIE_ID = B.MOVIE_ID
+              AND A.MOVIE_SEQ = B.MOVIE_SEQ
+              AND A.CREDIT_ID = C.CREDIT_ID
+
+              AND A.MOVIE_ID = FILM_CNT.MOVIE_ID(+)
+              AND A.MOVIE_SEQ = FILM_CNT.MOVIE_SEQ(+)
+
+              AND A.MOVIE_ID = D_CINE_CNT.MOVIE_ID(+)
+              AND A.MOVIE_SEQ = D_CINE_CNT.MOVIE_SEQ(+)
+
+              AND A.MOVIE_ID = DISK_CNT.MOVIE_ID(+)
+              AND A.MOVIE_SEQ = DISK_CNT.MOVIE_SEQ(+)
+
+              AND A.MOVIE_ID = TAPE_CNT.MOVIE_ID(+)
+              AND A.MOVIE_SEQ = TAPE_CNT.MOVIE_SEQ(+)
+
+              AND A.MOVIE_ID = VOD_CNT.MOVIE_ID(+)
+              AND A.MOVIE_SEQ = VOD_CNT.MOVIE_SEQ(+)
+
+              AND A.MOVIE_ID = SNARI_CNT.MOVIE_ID(+)
+              AND A.MOVIE_SEQ = SNARI_CNT.MOVIE_SEQ(+)
+
+              AND D.DIV_ID = 'A01'
+              AND B.PATTEN_CLSS = D.CODE
+              AND A.PERSON_ID = #{personId}
+              AND A.OPEN_YN = 'Y'
+        ORDER BY CREDIT_NM, PROD_YEAR DESC
+    </select>
+
+</mapper>

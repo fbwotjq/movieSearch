@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="egovframework.ag.homepage.care.service.CareDao">
+
+	<sql id="countHeaderQuery">
+		SELECT COUNT(1) AS TOTAL_COUNT FROM (
+    </sql>
+
+    <sql id="countTailQuery">
+        )
+    </sql>
+
+    <sql id="pagingHeaderQuery">
+		SELECT * FROM (SELECT ROWNUM AS RNUM, Z.* FROM (
+    </sql>
+
+    <sql id="pagingTailQuery">
+        ) Z WHERE ROWNUM &lt;= #{_page} * #{_pageSize}) WHERE RNUM &gt; (#{_page} - 1) * #{_pageSize}
+    </sql>
+
+    <sql id="selectGuideListQuery">
+		SELECT IDX
+				 , TITLE
+				 , BEST
+				 , REGDATE
+				 , AUTHOR
+				 , FILENAME
+				 , HIT
+		  FROM TBLFAQ
+		WHERE 1=1
+		<if test="searchText != null and searchText != ''">
+            <choose>
+			    <when test="searchType.equalsIgnoreCase('title')">
+			    AND TITLE LIKE '%' || #{searchText} || '%'
+			    </when>
+			    <when test="searchType.equalsIgnoreCase('contents')">
+			    AND CONTENTS LIKE '%' || #{searchText} || '%'
+			    </when>
+			    <otherwise>
+			    AND (TITLE LIKE '%' || #{searchText} || '%' OR CONTENTS LIKE '%' || #{searchText} || '%')
+			    </otherwise>
+			</choose>
+		</if>
+
+		 ORDER BY IDX DESC
+    </sql>
+
+    <select id="selectGuideListCount" parameterType="hashMap" resultType="int">
+        <include refid="countHeaderQuery" />
+        <include refid="selectGuideListQuery"/>
+        <include refid="countTailQuery" />
+    </select>
+
+    <select id="selectGuidePageList" parameterType="hashMap" resultType="egovMap">
+        <include refid="pagingHeaderQuery" />
+        <include refid="selectGuideListQuery"/>
+        <include refid="pagingTailQuery" />
+    </select>
+
+    <select id="selectGuideInfo" parameterType="long" resultType="egovMap">
+		SELECT IDX
+				 , TITLE
+				 , BEST
+				 , REGDATE
+				 , CONTENTS
+				 , AUTHOR
+				 , FILENAME
+				 , HIT
+		  FROM TBLFAQ
+		WHERE IDX = #{seq}
+    </select>
+
+    <update id="updateGuideCount" parameterType="long">
+		UPDATE TBLFAQ
+		     SET HIT = HIT+1
+		WHERE IDX = #{seq}
+    </update>
+
+
+	<insert id="insertPayResult" parameterType="hashMap">
+        <selectKey keyProperty="payseq" resultType="long" order="BEFORE">
+           SELECT NVL(MAX(PaySeq), 0) + 1 FROM TBLVODPAYRESULT
+        </selectKey>
+
+        INSERT INTO TBLVODPAYRESULT(
+        	PAYSEQ,MUL_ID,FILE_ID, MOVIE_ID, MOVIE_SEQ, MOVIE_TITLE, USERID, ITEMNAME
+	      , PAY_TYPE,PAYSUCCESS, PAYMETHOD, RESULTCODE
+	      , RESULTMSG, TID, MOID
+	      , RESULTPRICE, PGAUTHDATE, PGAUTHTIME
+	      , NOHPP, DIRECTBANKCODE, RCASH_RSLT
+	      , RESULTCASHNOAPP1, CARDNUMBER, AUTHCODE
+	      , CARDQUOTA, CARDCODE, CARDISSUERCODE
+	      , CREATEDON, LASTUPDATED, UPDATEDBY
+        )
+        VALUES (
+			#{payseq}, '1', '1', '1', '1', '1', #{userId}, #{sMovieTitleStringKorean}
+          , #{sPay_type}, #{sPaySuccess}, #{payMethod}, #{resultCode}
+          , #{resultMsg}, #{tid}, #{MOID}
+          , #{resultPrice}, #{applDate}, #{applTime}
+          , #{NoHPP}, #{DirectBankCode}, #{RCash_rslt}
+          , #{ResultCashNoApp1}, #{CARD_Num}, #{AuthCode}
+          , #{CARD_Quota}, #{CARD_Code}, #{CardIssuerCode}
+          , SYSDATE, SYSDATE, #{userId}
+
+        )
+
+    </insert>
+
+	<update id="updateCompanyPay">
+		UPDATE TBL_VODCOMPANY
+		     SET ISENABLE = 'Y'
+		         , PAYSEQ = #{payseq}
+		WHERE SEQ = #{seq}
+    </update>
+
+	<insert id="insertMovieman" parameterType="hashMap">
+        <selectKey keyProperty="arno" resultType="long" order="BEFORE">
+           SELECT NVL(MAX(arno), 0) + 1 FROM TBLACTORREQUEST
+        </selectKey>
+
+        INSERT INTO TBLACTORREQUEST(ARNO,ARNAME,ARCOMTENT,REGDATE,RECORDCHECK, CREATE_ID, CREATE_DATE, UPDATE_ID, UPDATE_DATE)
+        VALUES (#{arno}, #{arname}, #{arcomtent}, TO_CHAR(SYSDATE, 'YYYY-MM-DD'), #{recordcheck}, #{userId}, SYSDATE, #{userId}, SYSDATE)
+    </insert>
+
+	<insert id="insertAsk" parameterType="hashMap">
+        <selectKey keyProperty="privateSeq" resultType="long" order="BEFORE">
+           SELECT NVL(MAX(private_seq), 0) + 1 FROM TB_PRIVATE
+        </selectKey>
+
+        INSERT INTO TB_PRIVATE(private_seq, private_type_cd, up_private_seq, org_private_seq, title
+        								 , content_desc, create_name, create_ip, private_password, read_count
+        								 , admin_yn, create_id, create_date, update_id, update_date)
+        VALUES (#{privateSeq}, #{privateTypeCd}, 0, #{privateSeq}, #{title}
+        		  , #{contentDesc}, #{createName}, #{createIp}, #{privatePassword}, 0
+        		  , 'N', #{userName}, SYSDATE, #{userName}, SYSDATE)
+
+    </insert>
+
+    <select id="selectVodCompany" parameterType="long" resultType="egovMap">
+		SELECT COMPANYNAME
+		         , COMPANYPART
+		         , COMPANYMANAGER
+		         , CEMAIL
+		         , CTYPE
+		         , SDATE
+		         , EDATE
+		         , CPRICE
+		         , ACOUNTDATE
+		         , PAYTYPE
+		         , ISENABLE
+		         , ISAUTHCODE
+		  FROM TBL_VODCOMPANY
+		WHERE SEQ = #{seq}
+    </select>
+
+ 	<sql id="selectFaqListQuery">
+		SELECT IDX
+		      ,TITLE
+		      ,BEST
+		      ,REGDATE
+		      ,AUTHOR
+		      ,CONTENTS
+		      ,HIT
+		FROM TBLFAQ
+    </sql>
+
+	<select id="selectFaqListCount" parameterType="hashMap" resultType="int">
+        <include refid="countHeaderQuery" />
+        <include refid="selectFaqListQuery"/>
+        <include refid="countTailQuery" />
+    </select>
+
+    <select id="selectFaqPageList" parameterType="hashMap" resultType="egovMap">
+        <include refid="pagingHeaderQuery" />
+        <include refid="selectFaqListQuery"/>
+        ORDER BY IDX DESC
+        <include refid="pagingTailQuery" />
+    </select>
+
+	<update id="deleteVodCart">
+		DELETE TBL_ADDCART
+		WHERE MOVIE_ID = #{movieId}
+		    AND MOVIE_SEQ = #{movieSeq}
+		    AND USERID = #{userId}
+    </update>
+
+
+
+</mapper>

@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans:beans xmlns="http://www.springframework.org/schema/security"
+    xmlns:beans="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+    http://www.springframework.org/schema/security http://www.springframework.org/schema/security/spring-security.xsd">
+
+
+    <http pattern="/**/*.js" security="none" />
+    <http pattern="/**/*.css" security="none" />
+    <http pattern="/static/**" security="none" />
+    <http pattern="/resources/**" security="none" />
+    <http pattern="/nice/**" security="none" />
+    <http pattern="/upload/**" security="none" />
+    <http pattern="/download/**" security="none" />
+
+    <!--
+    <http pattern="/**/*.js" security="none" />
+    <http pattern="/**/*.css" security="none" />
+    <http pattern="/**/*.htm" security="none" />
+    <http pattern="/**/*.html" security="none" />
+    <http pattern="/static/**" security="none" />
+    <http pattern="/upload/**" security="none" />
+    <http pattern="/member/ipinProcess" security="none" />
+    <http pattern="/member/ipinResult" security="none" />
+    <http pattern="/member/checkplusSuccess" security="none" />
+    <http pattern="/member/checkplusFail" security="none" />
+    <http pattern="/member/loginJson/**" security="none" />
+    <http pattern="/index.html" security="none" />
+    <http pattern="/pagesXml" security="none" />
+    -->
+    <global-method-security secured-annotations="enabled" />
+
+    <http use-expressions="true"
+            auto-config="false"
+            disable-url-rewriting="true">
+        <port-mappings>
+            <port-mapping http="${http.port}" https="${https.port}"/>
+        </port-mappings>
+
+        <!--
+        <intercept-url pattern="/mypage/**"                 access="hasRole('MEMBER') or hasRole('ADMIN') or hasRole('DBA')" requires-channel="any" />
+        <intercept-url pattern="/museum/education/form"     access="hasRole('MEMBER') or hasRole('ADMIN') or hasRole('DBA')" requires-channel="any" />
+        <intercept-url pattern="/museum/education/form/**"  access="hasRole('MEMBER') or hasRole('ADMIN') or hasRole('DBA')" requires-channel="any" />
+        <intercept-url pattern="/library/mywish**"          access="hasRole('MEMBER') or hasRole('ADMIN') or hasRole('DBA')" requires-channel="any" />
+        <intercept-url pattern="/library/wish/form"         access="hasRole('MEMBER') or hasRole('ADMIN') or hasRole('DBA')" requires-channel="any" />
+        <intercept-url pattern="/library/wish/manage"       access="hasRole('MEMBER') or hasRole('ADMIN') or hasRole('DBA')" requires-channel="any" />
+        <intercept-url pattern="/service/to-kofa/**"        access="hasRole('MEMBER') or hasRole('ADMIN') or hasRole('DBA')" requires-channel="any" />
+        <intercept-url pattern="/service/to-director/**"    access="hasRole('MEMBER') or hasRole('ADMIN') or hasRole('DBA')" requires-channel="any" />
+        <intercept-url pattern="/**"                        access="permitAll" requires-channel="any" />
+         -->
+		<intercept-url pattern="/care/online/ask" access="hasRole('ROLE_MEMBER') or hasRole('ADMIN') or hasRole('DBA')" requires-channel="any" />
+        <intercept-url pattern="/care/online/movieman" access="hasRole('ROLE_MEMBER') or hasRole('ADMIN') or hasRole('DBA')" requires-channel="any" />
+        <intercept-url pattern="/mypage/**"                 access="hasRole('ROLE_MEMBER') or hasRole('ADMIN') or hasRole('DBA')" requires-channel="any" />
+        <intercept-url pattern="/db/keyword/**/form"     access="hasRole('ROLE_MEMBER') or hasRole('ADMIN') or hasRole('DBA')" requires-channel="any" />
+        <intercept-url pattern="/story/user/form"                 access="hasRole('ROLE_MEMBER') or hasRole('ADMIN') or hasRole('DBA')" requires-channel="any" />
+        <intercept-url pattern="/**" access="permitAll" requires-channel="any" />
+
+        <!-- <custom-filter before="FORM_LOGIN_FILTER" ref="ssoAuthenticationFilter"/> -->
+        <form-login login-page="/login"
+                    login-processing-url="/doLogin"
+                    username-parameter="username"
+                    password-parameter="password"
+                    authentication-success-handler-ref="customSuccessHandler"
+                    authentication-failure-handler-ref="customFailureHandler" />
+
+        <logout logout-url="/doLogout"
+                delete-cookies="JSESSIONID"
+                invalidate-session="true"
+                success-handler-ref="customLogoutSuccessHandler" />
+        <access-denied-handler ref="customAccessDeniedHandler"/>
+        <csrf/>
+        <headers>
+            <frame-options disabled="true"/>
+        </headers>
+        <session-management session-fixation-protection="none"/>
+    </http>
+
+    <authentication-manager alias="authenticationManager">
+        <authentication-provider user-service-ref="customUserDetailsService">
+            <password-encoder ref="customPasswordEncoder" />
+        </authentication-provider>
+    </authentication-manager>
+
+
+    <beans:bean id="customUserDetailsService" class="egovframework.ag.common.security.CustomUserDetailsService" />
+    <beans:bean id="customPasswordEncoder" class="egovframework.ag.common.security.CustomPasswordEncoder" />
+    <beans:bean id="customSuccessHandler" class="egovframework.ag.common.security.CustomSuccessHandler" />
+    <beans:bean id="customFailureHandler" class="egovframework.ag.common.security.CustomFailureHandler" />
+    <beans:bean id="customLogoutSuccessHandler" class="egovframework.ag.common.security.CustomLogoutSuccessHandler" />
+    <beans:bean id="customAccessDeniedHandler" class="egovframework.ag.common.security.CustomAccessDeniedHandler" />
+
+</beans:beans>

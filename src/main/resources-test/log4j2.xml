@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration monitorInterval="1">
+    <Appenders>
+        <Console name="console" target="SYSTEM_OUT">
+            <PatternLayout pattern="[KMDB_HB] %d %5p [%c:%L] %m%n"/>
+        </Console>
+
+        <RollingFile name="rollingFile" fileName="/home/tomcat/tomcat-kmdb-fo/logs/log4j/kmdb_hflog.log" filePattern="/home/tomcat/tomcat-kmdb-fo/logs/log4j/kmdb_hflog.log.%d{yyyy-MM-dd-HH-mm-ss}">
+            <ThresholdFilter level="ERROR" onMatch="ACCEPT" onMismatch="DENY"/>
+  			<PatternLayout pattern="[KMDB_HF] %d %5p [%c:%L] %m%n" />
+  			<Policies>
+   				<!-- interval(default 1)이므로 1초 간격으로 rolling 수행 -->
+   				<TimeBasedTriggeringPolicy />
+  			</Policies>
+ 		</RollingFile>
+    </Appenders>
+    <Loggers>
+        <Logger name="egovframework.ag" level="INFO" additivity="false">
+            <AppenderRef ref="console" />
+        </Logger>
+
+        <Root level="INFO">
+            <AppenderRef ref="console" />
+        </Root>
+    </Loggers>
+</Configuration>

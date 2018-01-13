@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="egovframework.ag.homepage.story.service.MovieReviewDao">
+
+    <resultMap id="reviewMap" type="egovMap">
+        <result property="contentDesc" column="CONTENT_DESC" javaType="java.lang.String" jdbcType="CLOB"/>
+    </resultMap>
+
+    <sql id="countHeaderQuery">
+        SELECT COUNT(1) AS TOTAL_COUNT FROM (
+    </sql>
+
+    <sql id="countTailQuery">
+        )
+    </sql>
+
+    <sql id="pagingHeaderQuery">
+        SELECT * FROM (SELECT ROWNUM AS RNUM, Z.* FROM (
+    </sql>
+
+    <sql id="pagingTailQuery">
+        ) Z WHERE ROWNUM &lt;= ${_page} * ${_pageSize}) WHERE RNUM &gt; (${_page} - 1) * ${_pageSize}
+    </sql>
+
+    <sql id="selectUserReviewListQuery">
+		SELECT A.REVIEW_SEQ
+				 , A.TITLE AS SUBJECT
+				 , A.CREATE_NAME
+				 , A.CONTENT_DESC
+				 , A.MOVIE_ID
+				 , A.READ_COUNT
+				 , A.CREATE_ID
+				 , TO_CHAR(A.CREATE_DATE,'YYYY-MM-DD') CREATE_DATE
+				 , B.TITLE AS MOVIE_TITLE
+				 , B.DIRECTOR
+				 , B.PROD_YEAR
+		  FROM TB_USER_REVIEW A
+		       INNER JOIN MOVIE_SE B ON A.MOVIE_SEQ = B.MOVIE_SEQ AND A.MOVIE_ID = B.MOVIE_ID
+		   WHERE  A.DEL_YN = 'N'
+		<if test="searchText != null and searchText != ''">
+            <choose>
+			    <when test="searchType.equalsIgnoreCase('subject')">
+			    AND A.TITLE LIKE '%' || #{searchText} || '%'
+			    </when>
+			    <when test="searchType.equalsIgnoreCase('composition')">
+			    AND A.CONTENT_DESC LIKE '%' || #{searchText} || '%'
+			    </when>
+			    <when test="searchType.equalsIgnoreCase('createName')">
+			    AND A.CREATE_NAME LIKE '%' || #{searchText} || '%'
+			    </when>
+			    <when test="searchType.equalsIgnoreCase('title')">
+			    AND B.TITLE LIKE '%' || #{searchText} || '%'
+			    </when>
+			    <otherwise>
+			    AND (A.TITLE LIKE '%' || #{searchText} || '%' OR A.CONTENT_DESC LIKE '%' || #{searchText} || '%')
+			    </otherwise>
+			</choose>
+		</if>
+		 ORDER BY A.REVIEW_SEQ DESC
+    </sql>
+
+    <select id="selectUserReviewListCount" parameterType="hashMap" resultType="int">
+        <include refid="countHeaderQuery" />
+        <include refid="selectUserReviewListQuery"/>
+        <include refid="countTailQuery" />
+    </select>
+
+    <select id="selectUserReviewList" parameterType="hashMap" resultType="egovMap">
+        <include refid="pagingHeaderQuery" />
+        <include refid="selectUserReviewListQuery"/>
+        <include refid="pagingTailQuery" />
+    </select>
+
+	<select id="selectUserReviewInfo" parameterType="long" resultMap="reviewMap">
+		SELECT A.TITLE AS SUBJECT
+				 , TO_CHAR(A.CREATE_DATE,'YYYY-MM-DD') CREATE_DATE
+				 , A.CONTENT_DESC
+				 , A.CREATE_NAME
+				 , A.READ_COUNT
+				 , A.MOVIE_ID
+				 , B.TITLE AS MOVIE_TITLE
+				 , B.DIRECTOR
+				 , B.PROD_YEAR
+		  FROM TB_USER_REVIEW A
+		       INNER JOIN MOVIE_SE B ON A.MOVIE_SEQ = B.MOVIE_SEQ AND A.MOVIE_ID = B.MOVIE_ID
+		WHERE A.REVIEW_SEQ = #{seq}
+    </select>
+
+    <update id="updateUserReviewReadCount" parameterType="long">
+        UPDATE TB_USER_REVIEW SET READ_COUNT = READ_COUNT + 1 WHERE REVIEW_SEQ = #{seq}
+    </update>
+
+
+    <insert id="insertUserReviewInfo" parameterType="hashMap">
+        <selectKey keyProperty="seq" resultType="long" order="BEFORE">
+          SELECT NVL(MAX(REVIEW_SEQ), 0) + 1 FROM TB_USER_REVIEW
+        </selectKey>
+
+        INSERT INTO TB_USER_REVIEW(REVIEW_SEQ
+                                 ,TITLE
+                                 ,CONTENT_DESC
+                                 ,CREATE_NAME
+                                 ,CREATE_IP
+                                 ,read_count
+                                 ,MOVIE_ID
+                                 ,MOVIE_SEQ
+                                 ,CREATE_ID
+                                 ,CREATE_DATE
+                                 ,UPDATE_ID
+                                 ,UPDATE_DATE)
+        VALUES (#{seq}
+               ,#{title}
+               ,#{contentDesc}
+               ,#{createName}
+               ,#{createIp}
+               ,0
+               ,#{movieId}
+               ,#{movieSeq}
+               ,#{userId}
+               ,SYSDATE
+               ,#{userId}
+               ,SYSDATE)
+    </insert>
+
+    <sql id="relMovieReviewListQuery">
+		SELECT A.REVIEW_SEQ
+				 , A.TITLE AS SUBJECT
+				 , A.CREATE_NAME
+				 , A.CONTENT_DESC
+				 , A.MOVIE_ID
+				 , A.READ_COUNT
+				 , A.CREATE_ID
+				 , TO_CHAR(A.CREATE_DATE,'YYYY-MM-DD') CREATE_DATE
+				 , B.TITLE AS MOVIE_TITLE
+				 , B.DIRECTOR
+				 , B.PROD_YEAR
+				 , B.MOVIE_SEQ
+		  FROM TB_USER_REVIEW A
+		       INNER JOIN MOVIE_SE B ON A.MOVIE_SEQ = B.MOVIE_SEQ AND A.MOVIE_ID = B.MOVIE_ID
+		   WHERE  A.DEL_YN = 'N'
+		   		AND A.MOVIE_ID = #{movieId}
+		   		AND A.MOVIE_SEQ = #{movieSeq}
+		   	ORDER BY A.REVIEW_SEQ
+        <choose>
+            <when test="searchOrderType != null and searchOrderType != '' and (searchOrderType == 'DESC' or searchOrderType == 'ASC')">
+                ${searchOrderType}
+            </when>
+            <otherwise>
+                DESC
+            </otherwise>
+        </choose>
+    </sql>
+
+
+    <select id="selectRelMovieReviewListCount" parameterType="map" resultType="int">
+        <include refid="countHeaderQuery" />
+        <include refid="relMovieReviewListQuery"/>
+        <include refid="countTailQuery" />
+    </select>
+
+    <select id="selectRelMovieReviewPageList" parameterType="map" resultType="movieReviewVo">
+        <include refid="pagingHeaderQuery" />
+        <include refid="relMovieReviewListQuery"/>
+        <include refid="pagingTailQuery" />
+    </select>
+
+
+</mapper>

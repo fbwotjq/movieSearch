@@ -1,0 +1,470 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="egovframework.ag.homepage.story.service.MovieStoryDao">
+
+	<resultMap id="storyMap" type="egovMap">
+        <result property="contentDesc" column="CONTENT_DESC" javaType="java.lang.String" jdbcType="CLOB"/>
+    </resultMap>
+
+    <sql id="countHeaderQuery">
+        SELECT COUNT(1) AS TOTAL_COUNT FROM (
+    </sql>
+
+    <sql id="countTailQuery">
+        )
+    </sql>
+
+    <sql id="pagingHeaderQuery">
+        SELECT * FROM (SELECT ROWNUM AS RNUM, Z.* FROM (
+    </sql>
+
+    <sql id="pagingTailQuery">
+        ) Z WHERE ROWNUM &lt;= ${_page} * ${_pageSize}) WHERE RNUM &gt; (${_page} - 1) * ${_pageSize}
+    </sql>
+
+    <select id="selectMovieStroyHeadInfo" parameterType="String" resultMap="storyMap">
+		SELECT A.MAIN_CONTENT_ID
+		      ,B.STORY_SEQ
+		      ,B.STORY_DIV_SEQ
+		      ,C.TITLE AS STORY_DIV_TITLE
+		      ,B.TITLE
+		      ,B.REGIT_DATE
+		      ,B.WRITER_SEQ
+		      ,D.WRITER AS WRITER_NAME
+		      ,B.CONTENT_DESC
+		      ,B.FILE_ALT
+		      ,B.ORG_FILE_NAME
+		      ,A.FILE_NAME
+		FROM TB_MAIN_CONTENT A
+		     INNER JOIN TB_MOVIE_STORY B ON A.KEY1 = B.STORY_SEQ
+		     INNER JOIN TB_MOVIE_STORY_DIV C ON B.STORY_DIV_SEQ = C.STORY_DIV_SEQ
+		     INNER JOIN TBL_WRITER D ON B.WRITER_SEQ = D.SEQ
+		WHERE A.CONTENT_TYPE_CD = 'STORY_HEAD'
+    </select>
+
+    <select id="selectMainMovieStoryList" parameterType="int" resultType="egovMap">
+		SELECT ROWNUM, X.*
+		FROM (SELECT B.TITLE AS STORY_DIV_TITLE
+		            ,A.STORY_SEQ
+		            ,A.STORY_DIV_SEQ
+		            ,A.TITLE
+		            ,A.WRITER_SEQ
+		            ,C.WRITER AS WRITER_NAME
+		            ,A.REGIT_DATE
+		            ,A.FILE_ALT
+		            ,A.ORG_FILE_NAME
+		            ,A.FILE_NAME
+		            ,(to_char(SYSDATE ,'yyyymmdd') - A.REGIT_DATE) AS REG_GAP
+		      FROM TB_MOVIE_STORY A
+		           INNER JOIN TB_MOVIE_STORY_DIV B
+		               ON A.STORY_DIV_SEQ = B.STORY_DIV_SEQ
+		                  AND A.ACTIVE_YN = B.ACTIVE_YN
+		           INNER JOIN TBL_WRITER C ON A.WRITER_SEQ = C.SEQ
+		      WHERE 1 = 1
+		            AND B.END_YN = 'N'
+		            AND A.ACTIVE_YN = 'Y'
+		      ORDER BY A.REGIT_DATE DESC, A.STORY_SEQ DESC) X
+		WHERE ROWNUM &lt;= #{mainMovieStoryCount}
+    </select>
+
+
+    <sql id="movieStoryListHeadQuery">
+        SELECT B.STORY_DIV_SEQ
+              ,B.TITLE AS STORY_DIV_TITLE
+              ,A.STORY_SEQ
+              ,A.SUB_DIV1 AS SUB_DIV
+              ,A.SUB_DIV2 AS SUB_DIV2
+              ,A.TITLE
+              ,A.SUB_TITLE
+              ,A.WRITER_SEQ
+              ,C.WRITER AS WRITER_NAME
+              ,A.REGIT_DATE
+              ,A.CONTENT_DESC
+              ,A.FILE_ALT
+              ,A.ORG_FILE_NAME
+              ,A.FILE_NAME
+        FROM TB_MOVIE_STORY A
+             INNER JOIN TB_MOVIE_STORY_DIV B
+                 ON A.STORY_DIV_SEQ = B.STORY_DIV_SEQ
+                    AND A.ACTIVE_YN = B.ACTIVE_YN
+             INNER JOIN
+             (SELECT SEQ, WRITER, TRIM(CASE WHEN INSTR(WRITER, '(', 1) > 0 THEN SUBSTR(WRITER, 0, INSTR(WRITER, '(', 1) - 1) ELSE WRITER END) AS WRITER_NAME
+              FROM TBL_WRITER) C
+                 ON A.WRITER_SEQ = C.SEQ
+        WHERE 1 = 1
+              AND A.ACTIVE_YN = 'Y'
+
+        <if test="storyDivSeq != null and storyDivSeq != ''">
+            AND B.STORY_DIV_SEQ = #{storyDivSeq}
+        </if>
+    </sql>
+
+    <sql id="movieStoryListQuery">
+        <include refid="movieStoryListHeadQuery"/>
+
+	    <if test="endYn != null and endYn != ''">
+	        AND B.END_YN = #{endYn}
+	    </if>
+
+	    <if test="keyword != null and keyword != ''">
+	        AND A.SEARCH_KEYWORD LIKE '%' || #{keyword} || '%'
+	    </if>
+
+	    <if test="writerSeq != null and writerSeq != ''">
+	        AND A.WRITER_SEQ = #{writerSeq}
+	    </if>
+
+	    <if test="writerName != null and writerName != ''">
+	        AND C.WRITER_NAME = #{writerName}
+	    </if>
+
+	    <if test="searchText != null and searchText != ''">
+	        <choose>
+	            <when test="searchType == 'TITLE'">
+	                AND A.TITLE LIKE '%' || #{searchText} || '%'
+	            </when>
+	            <when test="searchType == 'CONTENT'">
+	                AND A.CONTENT_DESC LIKE '%' || #{searchText} || '%'
+	            </when>
+	            <when test="searchType == 'WRITER'">
+	                AND C.WRITER_NAME LIKE '%' || #{searchText} || '%'
+	          </when>
+	        </choose>
+	    </if>
+
+	    ORDER BY A.REGIT_DATE
+
+	    <choose>
+	        <when test="searchOrderType != null and searchOrderType != '' and (searchOrderType == 'DESC' or searchOrderType == 'ASC')">
+	            ${searchOrderType}
+	        </when>
+	        <otherwise>
+	            DESC
+	        </otherwise>
+	    </choose>
+	    ,A.STORY_SEQ DESC
+    </sql>
+
+    <sql id="selectTopCountMovieStoryListQuery">
+        <include refid="movieStoryListHeadQuery"/>
+        ORDER BY A.REGIT_DATE DESC ,A.STORY_SEQ DESC
+    </sql>
+
+
+    <select id="selectMovieStoryListCount" parameterType="map" resultType="int">
+        <include refid="countHeaderQuery" />
+        <include refid="movieStoryListQuery"/>
+        <include refid="countTailQuery" />
+    </select>
+
+    <select id="selectMovieStoryPageList" parameterType="map" resultType="movieStoryVo">
+        <include refid="pagingHeaderQuery" />
+        <include refid="movieStoryListQuery"/>
+        <include refid="pagingTailQuery" />
+    </select>
+
+    <select id="selectTopCountMovieStoryList" parameterType="map" resultType="movieStoryVo">
+        SELECT *
+        FROM (
+            <include refid="selectTopCountMovieStoryListQuery"/>
+        )
+        WHERE ROWNUM &lt;= ${movieStoryCount}
+    </select>
+
+    <select id="selectEndStoryDivList" resultType="egovMap">
+		SELECT A.STORY_DIV_SEQ, A.TITLE, NVL(B.COUNT, 0) AS MOVIE_STORY_COUNT
+		FROM TB_MOVIE_STORY_DIV A
+		     LEFT OUTER JOIN (SELECT STORY_DIV_SEQ, COUNT(1) AS COUNT
+		                      FROM TB_MOVIE_STORY
+		                      GROUP BY STORY_DIV_SEQ) B
+		         ON A.STORY_DIV_SEQ = B.STORY_DIV_SEQ
+		     LEFT OUTER JOIN TB_MOVIE_STORY_DIV C ON A.UP_STORY_DIV_SEQ = C.STORY_DIV_SEQ
+		WHERE A.ACTIVE_YN = 'Y'
+		      AND A.END_YN = 'Y'
+		ORDER BY C.SORT_NO, A.SORT_NO
+    </select>
+
+    <update id="updateMovieStoryReadCount" parameterType="long">
+        UPDATE TB_MOVIE_STORY SET READ_COUNT = READ_COUNT + 1 WHERE STORY_SEQ = #{storySeq}
+    </update>
+
+    <select id="selectMovieStoryInfo" parameterType="long" resultType="movieStoryVo">
+		SELECT A.STORY_SEQ
+		      ,B.STORY_DIV_SEQ
+		      ,B.TITLE AS STORY_DIV_TITLE
+		      ,A.SUB_DIV1 AS SUB_DIV
+		      ,A.SUB_DIV2 AS SUB_DIV2
+		      ,A.TITLE
+		      ,A.SUB_TITLE
+		      ,A.WRITER_SEQ
+		      ,C.WRITER AS WRITER_NAME
+		      ,A.REGIT_DATE
+		      ,A.FILE_ALT
+		      ,A.ORG_FILE_NAME
+		      ,A.FILE_NAME
+		      ,A.CONTENT_DESC
+		      ,A.CREDITS_DESC
+		      ,A.SEARCH_KEYWORD
+		      ,A.PUBLIC_MARK
+		      ,A.COPY_PROTECTION_YN
+		FROM TB_MOVIE_STORY A
+		     INNER JOIN TB_MOVIE_STORY_DIV B ON A.STORY_DIV_SEQ = B.STORY_DIV_SEQ
+		     INNER JOIN TBL_WRITER C ON A.WRITER_SEQ = C.SEQ
+		WHERE A.STORY_SEQ = #{storySeq}
+    </select>
+
+    <select id="selectWriterPreMovieStorySeq" parameterType="movieStoryVo" resultType="long">
+		SELECT STORY_SEQ AS PRE_STORY_SEQ
+		FROM (SELECT A.STORY_SEQ
+		      FROM TB_MOVIE_STORY A
+		      WHERE A.WRITER_SEQ = #{writerSeq}
+		            AND A.REGIT_DATE &lt;= #{regitDate}
+		            AND A.STORY_SEQ != #{storySeq}
+		      ORDER BY A.REGIT_DATE DESC, A.STORY_SEQ DESC)
+		WHERE ROWNUM = 1
+    </select>
+
+    <select id="selectChoiceMovieStoryList" resultType="movieStoryVo">
+        SELECT A.STORY_SEQ
+              ,A.STORY_DIV_SEQ
+              ,B.TITLE AS STORY_DIV_TITLE
+              ,A.TITLE
+              ,A.WRITER_SEQ
+              ,C.WRITER AS WRITER_NAME
+              ,A.REGIT_DATE
+              ,A.CHOICE_NO
+              ,A.FILE_ALT
+              ,A.ORG_FILE_NAME
+              ,A.FILE_NAME
+        FROM TB_MOVIE_STORY A
+             INNER JOIN TB_MOVIE_STORY_DIV B ON A.STORY_DIV_SEQ = B.STORY_DIV_SEQ
+             INNER JOIN TBL_WRITER C ON A.WRITER_SEQ = C.SEQ
+        WHERE 1 = 1
+              AND A.CHOICE_NO > 0
+        ORDER BY A.CHOICE_NO ASC
+    </select>
+
+    <select id="selectMovieStoryRelMovieList" parameterType="long" resultType="movieStoryRelMovieVo">
+		SELECT A.STORY_SEQ
+		      ,A.SEQ
+		      ,A.MOVIE_ID
+		      ,A.MOVIE_SEQ
+		      ,B.TITLE AS TITLE
+		      ,B.ORG_TIT AS ORG_TITLE
+		      ,B.TITLE_ENG AS EN_TITLE
+		      ,B.DIRECTOR
+		      ,B.PROD_YEAR
+		FROM TB_STORY_REL_MOVIE A
+		     INNER JOIN MOVIE_SE B
+		         ON A.MOVIE_ID = B.MOVIE_ID
+		            AND A.MOVIE_SEQ = B.MOVIE_SEQ
+		WHERE STORY_SEQ = #{storySeq}
+    </select>
+
+    <select id="selectMovieRelMovieStoryList" parameterType="movieStoryRelMovieVo" resultType="movieStoryVo">
+		SELECT *
+		FROM (SELECT A.STORY_SEQ
+		            ,A.MOVIE_ID
+		            ,A.MOVIE_SEQ
+		            ,B.STORY_DIV_SEQ
+		            ,B.TITLE
+		            ,B.REGIT_DATE
+		            ,B.WRITER_SEQ
+		            ,C.WRITER AS WRITER_NAME
+		      FROM TB_STORY_REL_MOVIE A
+		           INNER JOIN TB_MOVIE_STORY B ON A.STORY_SEQ = B.STORY_SEQ
+		           INNER JOIN TBL_WRITER C ON B.WRITER_SEQ = C.SEQ
+		      WHERE 1 = 1
+		            AND A.MOVIE_ID = #{movieId}
+		            AND A.MOVIE_SEQ = #{movieSeq}
+		            AND A.STORY_SEQ != #{storySeq}
+		      ORDER BY B.REGIT_DATE DESC, B.STORY_SEQ DESC)
+		WHERE ROWNUM &lt;= 3
+    </select>
+
+    <select id="selectMovieStoryRelPersonList" parameterType="long" resultType="movieStoryRelPersonVo">
+		SELECT A.STORY_SEQ
+		      ,A.SEQ
+		      ,A.PERSON_ID
+		      ,CASE NATIONAL_CLSS WHEN 'F' THEN (CASE WHEN B.ENGNM IS NULL THEN B.KORNM ELSE B.ENGNM END) ELSE B.KORNM END AS NAME
+		      ,B.PERSONFIELD
+		      ,B.BIRTH_DATE
+		      ,CASE WHEN NVL(B.BIRTH_DATE, '00000000') = '00000000' THEN '' ELSE SUBSTR(B.BIRTH_DATE, 0, 4) END AS BIRTH_YEAR
+		      ,B.DEATH_DATE
+		      ,CASE WHEN NVL(B.DEATH_DATE, '00000000') = '00000000' THEN '' ELSE SUBSTR(B.DEATH_DATE, 0, 4) END AS DEATH_YEAR
+		FROM TB_STORY_REL_PERSON A INNER JOIN PERSON B ON A.PERSON_ID = B.PERSON_ID
+		WHERE A.STORY_SEQ = #{storySeq}
+    </select>
+
+    <select id="selectPersonRelMovieStoryList" parameterType="movieStoryRelPersonVo" resultType="movieStoryVo">
+		SELECT *
+		FROM (SELECT A.STORY_SEQ
+		            ,A.PERSON_ID
+		            ,B.STORY_DIV_SEQ
+		            ,B.TITLE
+		            ,B.REGIT_DATE
+		            ,B.WRITER_SEQ
+		            ,C.WRITER AS WRITER_NAME
+		      FROM TB_STORY_REL_PERSON A
+		           INNER JOIN TB_MOVIE_STORY B ON A.STORY_SEQ = B.STORY_SEQ
+		           INNER JOIN TBL_WRITER C ON B.WRITER_SEQ = C.SEQ
+		      WHERE 1 = 1
+		            AND A.PERSON_ID = #{personId}
+		            AND A.STORY_SEQ != #{storySeq}
+		      ORDER BY B.REGIT_DATE DESC, B.STORY_SEQ DESC)
+		WHERE ROWNUM &lt;= 3
+    </select>
+
+    <select id="selectWriterMovieStoryCountList" parameterType="map" resultType="egovMap">
+		SELECT X.WRITER_NAME, NVL(Y.MOVIE_STORY_COUNT, 0) AS MOVIE_STORY_COUNT
+		FROM (SELECT DISTINCT WRITER_NAME
+		      FROM (SELECT TRIM(CASE WHEN INSTR(A.WRITER, '(', 1) > 0 THEN SUBSTR(A.WRITER, 0, INSTR(A.WRITER, '(', 1) - 1) ELSE WRITER END) AS WRITER_NAME
+		            FROM TBL_WRITER A
+		            WHERE 1 = 1
+		                  AND (A.WRITER BETWEEN #{fir} AND #{sec}))) X
+		     LEFT OUTER JOIN
+		     (SELECT TRIM(CASE WHEN INSTR(B.WRITER, '(', 1) > 0 THEN SUBSTR(B.WRITER, 0, INSTR(B.WRITER, '(', 1) - 1) ELSE WRITER END) AS WRITER_NAME
+		            ,COUNT(1) AS MOVIE_STORY_COUNT
+		      FROM TB_MOVIE_STORY A INNER JOIN TBL_WRITER B ON A.WRITER_SEQ = B.SEQ
+		      GROUP BY B.WRITER) Y
+		         ON X.WRITER_NAME = Y.WRITER_NAME
+		ORDER BY X.WRITER_NAME
+    </select>
+
+    <select id="selectWriterInfo" parameterType="long" resultType="egovMap">
+		SELECT A.SEQ AS WRITER_SEQ
+              ,CASE WHEN INSTR(A.WRITER, '(', 1) > 0 THEN SUBSTR(A.WRITER, 0, INSTR(A.WRITER, '(', 1) - 1) ELSE WRITER END AS WRITER_NAME
+              ,CASE
+                   WHEN INSTR(A.WRITER, '(', 1) > 0 THEN SUBSTR(A.WRITER, INSTR(A.WRITER, '(', 1), INSTR(A.WRITER, ')', 1) - (INSTR(A.WRITER, '(', 1) - 1))
+                   ELSE ''
+               END
+                   AS WRITER_SUB_NAME
+		FROM TBL_WRITER A
+		WHERE A.SEQ = #{writerSeq}
+    </select>
+
+    <select id="selectTopStoryDivSeqInfo" resultType="long">
+        SELECT MIN(STORY_DIV_SEQ) AS STORY_DIV_SEQ FROM TB_MOVIE_STORY_DIV WHERE ACTIVE_YN = 'Y' AND END_YN= 'N'
+    </select>
+
+    <select id="selectSearchTargetStoryDivSeqInfo" parameterType="long" resultType="egovMap">
+		SELECT A.UP_STORY_DIV_SEQ
+		      ,CASE
+		           WHEN A.STORY_DIV_SEQ IS NULL THEN (CASE WHEN B.STORY_DIV_SEQ IS NULL THEN A.UP_STORY_DIV_SEQ ELSE B.STORY_DIV_SEQ END)
+		           ELSE A.STORY_DIV_SEQ
+		       END
+		           AS STORY_DIV_SEQ
+		FROM (SELECT CASE WHEN UP_STORY_DIV_SEQ IS NULL THEN STORY_DIV_SEQ ELSE UP_STORY_DIV_SEQ END AS UP_STORY_DIV_SEQ
+		            ,CASE WHEN UP_STORY_DIV_SEQ IS NULL THEN NULL ELSE STORY_DIV_SEQ END AS STORY_DIV_SEQ
+		      FROM TB_MOVIE_STORY_DIV A
+		      WHERE A.STORY_DIV_SEQ = #{storyDivSeq}) A
+		     LEFT OUTER JOIN (SELECT A.UP_STORY_DIV_SEQ, MIN(STORY_DIV_SEQ) KEEP (DENSE_RANK FIRST ORDER BY SORT_NO) AS STORY_DIV_SEQ
+		                      FROM TB_MOVIE_STORY_DIV A
+		                      WHERE A.ACTIVE_YN = 'Y'
+		                            AND END_YN = 'N'
+		                      GROUP BY A.UP_STORY_DIV_SEQ) B
+		         ON A.UP_STORY_DIV_SEQ = B.UP_STORY_DIV_SEQ
+    </select>
+
+    <sql id="relPersonMovieStoryListQuery">
+		SELECT B.STORY_DIV_SEQ
+		      ,B.TITLE AS STORY_DIV_TITLE
+		      ,A.STORY_SEQ
+		      ,A.SUB_DIV1 AS SUB_DIV
+		      ,A.SUB_DIV2 AS SUB_DIV2
+		      ,A.TITLE
+		      ,A.WRITER_SEQ
+		      ,C.WRITER AS WRITER_NAME
+		      ,A.REGIT_DATE
+		      ,A.CONTENT_DESC
+		      ,A.FILE_ALT
+		      ,A.ORG_FILE_NAME
+		      ,A.FILE_NAME
+		FROM TB_MOVIE_STORY A
+		     INNER JOIN TB_MOVIE_STORY_DIV B
+		         ON A.STORY_DIV_SEQ = B.STORY_DIV_SEQ
+		            AND A.ACTIVE_YN = B.ACTIVE_YN
+		     INNER JOIN TBL_WRITER C ON A.WRITER_SEQ = C.SEQ
+		     INNER JOIN TB_STORY_REL_PERSON D ON A.STORY_SEQ = D.STORY_SEQ
+		WHERE 1 = 1
+		      AND A.ACTIVE_YN = 'Y'
+		      AND D.PERSON_ID = #{personId}
+		ORDER BY A.STORY_SEQ
+
+        <choose>
+            <when test="searchOrderType != null and searchOrderType != '' and (searchOrderType == 'DESC' or searchOrderType == 'ASC')">
+                ${searchOrderType}
+            </when>
+            <otherwise>
+                DESC
+            </otherwise>
+        </choose>
+    </sql>
+
+    <select id="selectRelPersonMovieStoryListCount" parameterType="map" resultType="int">
+        <include refid="countHeaderQuery" />
+        <include refid="relPersonMovieStoryListQuery"/>
+        <include refid="countTailQuery" />
+    </select>
+
+    <select id="selectRelPersonMovieStoryPageList" parameterType="map" resultType="movieStoryVo">
+        <include refid="pagingHeaderQuery" />
+        <include refid="relPersonMovieStoryListQuery"/>
+        <include refid="pagingTailQuery" />
+    </select>
+
+     <sql id="relMovieStoryListQuery">
+		SELECT B.STORY_DIV_SEQ
+	              ,B.TITLE AS STORY_DIV_TITLE
+	              ,A.STORY_SEQ
+	              ,A.SUB_DIV1 AS SUB_DIV
+	              ,A.SUB_DIV2 AS SUB_DIV2
+	              ,A.TITLE
+	              ,A.SUB_TITLE
+	              ,A.WRITER_SEQ
+	              ,C.WRITER AS WRITER_NAME
+	              ,A.REGIT_DATE
+	              ,A.CONTENT_DESC
+	              ,A.FILE_ALT
+	              ,A.ORG_FILE_NAME
+	              ,A.FILE_NAME
+	        FROM TB_MOVIE_STORY A
+	             INNER JOIN TB_MOVIE_STORY_DIV B
+	                 ON A.STORY_DIV_SEQ = B.STORY_DIV_SEQ
+	                    AND A.ACTIVE_YN = B.ACTIVE_YN
+	             INNER JOIN
+	             (SELECT SEQ, WRITER, TRIM(CASE WHEN INSTR(WRITER, '(', 1) &gt; 0 THEN SUBSTR(WRITER, 0, INSTR(WRITER, '(', 1) - 1) ELSE WRITER END) AS WRITER_NAME
+	              FROM TBL_WRITER) C
+	                 ON A.WRITER_SEQ = C.SEQ
+	             INNER JOIN
+	                TB_STORY_REL_MOVIE D
+	                 ON A.STORY_SEQ = D.STORY_SEQ
+	        WHERE 1 = 1
+	              AND A.ACTIVE_YN = 'Y'
+	              AND D.MOVIE_ID = #{movieId}
+	              AND D.MOVIE_SEQ = #{movieSeq}
+	         ORDER BY A.STORY_SEQ
+
+        <choose>
+            <when test="searchOrderType != null and searchOrderType != '' and (searchOrderType == 'DESC' or searchOrderType == 'ASC')">
+                ${searchOrderType}
+            </when>
+            <otherwise>
+                DESC
+            </otherwise>
+        </choose>
+    </sql>
+
+
+    <select id="selectRelMovieStoryListCount" parameterType="map" resultType="int">
+        <include refid="countHeaderQuery" />
+        <include refid="relMovieStoryListQuery"/>
+        <include refid="countTailQuery" />
+    </select>
+
+    <select id="selectRelMovieStoryPageList" parameterType="map" resultType="movieStoryVo">
+        <include refid="pagingHeaderQuery" />
+        <include refid="relMovieStoryListQuery"/>
+        <include refid="pagingTailQuery" />
+    </select>
+</mapper>

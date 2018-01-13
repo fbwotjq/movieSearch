@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+	<!-- SqlSession setup for MyBatis Database Layer -->
+    <bean id="sqlSession_MEMBER" class="org.mybatis.spring.SqlSessionFactoryBean">
+        <property name="dataSource" ref="dataSource_MEMBER" />
+        <property name="configLocation" value="classpath:/egovframework/sqlmap/sql-mapper-config.xml" />
+        <property name="mapperLocations" value="classpath:/egovframework/sqlmap/mappers/member/**/*.xml" />
+    </bean>
+
+    <bean id="sqlSession_KMDB" class="org.mybatis.spring.SqlSessionFactoryBean">
+        <property name="dataSource" ref="dataSource_KMDB" />
+        <property name="configLocation" value="classpath:/egovframework/sqlmap/sql-mapper-config.xml" />
+        <property name="mapperLocations" value="classpath:/egovframework/sqlmap/mappers/kmdb/**/*.xml" />
+    </bean>
+
+	<bean id="sqlSession_KF" class="org.mybatis.spring.SqlSessionFactoryBean">
+        <property name="dataSource" ref="dataSource_KF" />
+        <property name="configLocation" value="classpath:/egovframework/sqlmap/sql-mapper-config.xml" />
+        <property name="mapperLocations" value="classpath:/egovframework/sqlmap/mappers/kf/**/*.xml" />
+    </bean>
+
+
+    <!-- MapperConfigurer setup for MyBatis Database Layer with @Mapper("deptMapper") in DeptMapper Interface -->
+    <bean id="MEMBERMapperConfig" class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+        <property name="basePackage" value="egovframework.ag" />
+        <property name="sqlSessionFactoryBeanName" value="sqlSession_MEMBER"/>
+        <property name="annotationClass" value="egovframework.ag.common.annotation.MemberMapper"/>
+    </bean>
+
+    <bean id="KMDBMapperConfig" class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+        <property name="basePackage" value="egovframework.ag" />
+        <property name="sqlSessionFactoryBeanName" value="sqlSession_KMDB"/>
+        <property name="annotationClass" value="egovframework.ag.common.annotation.KMDBMapper"/>
+    </bean>
+
+    <bean id="KFMapperConfig" class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+        <property name="basePackage" value="egovframework.ag" />
+        <property name="sqlSessionFactoryBeanName" value="sqlSession_KF"/>
+        <property name="annotationClass" value="egovframework.ag.common.annotation.KFMapper"/>
+    </bean>
+
+
+</beans>

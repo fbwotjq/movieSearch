@@ -1,0 +1,687 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="egovframework.ag.homepage.history.service.HistoryDao">
+    <resultMap id="introMap" type="egovMap">
+        <result property="contents" column="CONTENTS" jdbcType="CLOB" javaType="java.lang.String"/>
+    </resultMap>
+
+    <resultMap id="boardMap" type="egovMap">
+        <result property="contentDesc" column="CONTENT_DESC" jdbcType="CLOB" javaType="java.lang.String"/>
+    </resultMap>
+
+	<sql id="countHeaderQuery">
+		SELECT COUNT(1) AS TOTAL_COUNT FROM (
+    </sql>
+
+    <sql id="countTailQuery">
+        )
+    </sql>
+
+    <sql id="pagingHeaderQuery">
+		SELECT * FROM (SELECT ROWNUM AS RNUM, Z.* FROM (
+    </sql>
+
+    <sql id="pagingTailQuery">
+        ) Z WHERE ROWNUM &lt;= #{_page} * #{_pageSize}) WHERE RNUM &gt; (#{_page} - 1) * #{_pageSize}
+    </sql>
+
+    <sql id="tbCodeWithSql">
+        <if test="archivesCodeList != null">
+	        WITH TB_CODE AS
+	                 (SELECT *
+	                  FROM (
+	                        <foreach collection="archivesCodeList" item="item" separator="UNION">
+	                            SELECT #{item.cCodeGroupId}             AS CODE_GROUP_ID
+	                                  ,NVL(#{item.cUpCodeSubId}, '')    AS UP_CODE_SUB_ID
+	                                  ,#{item.cCodeSubId}               AS CODE_SUB_ID
+	                                  ,#{item.cCodeSubName}             AS CODE_SUB_NAME
+	                                  ,NVL(#{item.cOptionValue1}, '')   AS OPTION_VALUE1
+	                                  ,NVL(#{item.cOptionValue2}, '')   AS OPTION_VALUE2
+	                            FROM DUAL
+	                        </foreach>
+	                        ))
+        </if>
+
+    </sql>
+    <sql id="tbPartCodeWithSql">
+        <if test="partCodeList != null">
+           , TB_PART_CODE AS
+                 (SELECT *
+                  FROM (
+                        <foreach collection="partCodeList" item="item" separator="UNION">
+                            SELECT #{item.cCodeGroupId}             AS CODE_GROUP_ID
+                                  ,NVL(#{item.cUpCodeSubId}, '')    AS UP_CODE_SUB_ID
+                                  ,#{item.cCodeSubId}               AS CODE_SUB_ID
+                                  ,#{item.cCodeSubName}             AS CODE_SUB_NAME
+                                  ,NVL(#{item.cOptionValue1}, '')   AS OPTION_VALUE1
+                                  ,NVL(#{item.cOptionValue2}, '')   AS OPTION_VALUE2
+                            FROM DUAL
+                        </foreach>
+                        ))
+        </if>
+
+    </sql>
+
+    <sql id="filePayResultjoinSql">
+		SELECT A.FILE_SEQ
+		      ,A.FILE_ORDER
+		      ,A.FILE_TYPE_CD
+		      ,A.DOWN_YN
+		      ,A.VIEW_YN
+		      ,A.FREE_YN
+		      ,A.AMOUNT
+		      ,CASE WHEN NVL(PAY_CNT, 0) > 0 THEN 'Y' ELSE 'N' END AS PAY_YN
+		FROM TB_ONLINE_ARCHIVES_FILE A
+		     LEFT OUTER JOIN (SELECT FILE_SEQ, FILE_ORDER, COUNT(1) AS PAY_CNT
+		                      FROM TB_ARCHIVES_PAY_RESULT
+		                      WHERE PAY_TYPE = '0'
+		                            AND (RESULTCODE = '00' OR RESULTCODE = '0000')
+		                            AND USERID = #{loginUserId}
+		                      GROUP BY FILE_SEQ, FILE_ORDER) B
+		         ON A.FILE_SEQ = B.FILE_SEQ
+		            AND A.FILE_ORDER = B.FILE_ORDER
+    </sql>
+
+    <sql id="selectArchivesListQuery">
+        <include refid="tbCodeWithSql"/>
+        <include refid="tbPartCodeWithSql"/>
+        SELECT A.ARCHIVES_SEQ
+              ,A.ARCHIVES_TYPE_CD
+              ,A.CODE01
+              ,A.CODE02
+              <if test="archivesCodeList != null">
+              ,B.CODE_SUB_NAME AS CODE01_NAME
+              ,C.CODE_SUB_NAME AS CODE02_NAME
+              </if>
+              ,A.TXT_CODE_NAME
+              ,A.PART_CODE
+              <if test="partCodeList != null">
+              ,CODE.CODE_SUB_NAME AS PART_CODE_NAME
+              </if>
+              ,A.TXT_PART_CODE_NAME
+              ,A.SUBJECT
+              ,A.TARGET_NAME
+              ,A.BIRTH_DATE
+              ,TO_CHAR(TO_DATE(A.BIRTH_DATE, 'YYYYMMDD'), 'YYYY') AS BIRTH_YEAR
+              ,A.CHERCHEUR
+              ,A.START_DATE
+              ,A.END_DATE
+              ,   TO_CHAR(TO_DATE(A.START_DATE, 'YYYYMMDD'), 'YYYY-MM')
+               || '~'
+               || (CASE
+                       WHEN TO_CHAR(TO_DATE(A.START_DATE, 'YYYYMMDD'), 'YYYY') = TO_CHAR(TO_DATE(A.END_DATE, 'YYYYMMDD'), 'YYYY') THEN
+                           TO_CHAR(TO_DATE(A.END_DATE, 'YYYYMMDD'), 'MM')
+                       ELSE
+                           TO_CHAR(TO_DATE(A.END_DATE, 'YYYYMMDD'), 'YYYY-MM')
+                   END)
+                   AS TALK_TERM
+              ,A.FILE_ALT
+              ,A.ORG_FILE_NAME
+              ,A.FILE_NAME
+              ,A.SUMMARY_DESC
+              ,A.READ_COUNT
+              ,A.HEAD_YN
+              ,A.ACTIVE_YN
+              ,A.CREATE_DATE
+              <if test="fileTypeCd != null and fileTypeCd != ''">
+              ,D.FILE_SEQ
+              ,D.FILE_ORDER
+              ,D.DOWN_YN
+              ,D.VIEW_YN
+              ,D.FREE_YN
+              ,D.PAY_YN
+              ,D.AMOUNT
+              </if>
+
+              <if test="archivesTypeCd != null and archivesTypeCd != '' and archivesTypeCd.equalsIgnoreCase('60')">
+              ,E.CONTENTS
+              </if>
+        FROM TB_ONLINE_ARCHIVES A
+
+             <if test="archivesCodeList != null">
+             INNER JOIN (SELECT *
+                         FROM TB_CODE
+                         WHERE UP_CODE_SUB_ID IS NULL) B
+                 ON A.CODE01 = B.CODE_SUB_ID
+             LEFT OUTER JOIN (SELECT * FROM TB_CODE) C
+                 ON A.CODE01 = C.UP_CODE_SUB_ID AND A.CODE02 = C.CODE_SUB_ID
+             </if>
+
+             <if test="partCodeList != null">
+             LEFT OUTER JOIN TB_PART_CODE CODE
+                 ON A.PART_CODE = CODE.CODE_SUB_ID
+             </if>
+
+             <if test="fileTypeCd != null and fileTypeCd != ''">
+             LEFT OUTER JOIN (<include refid="filePayResultjoinSql"/>) D
+                 ON A.FILE_SEQ = D.FILE_SEQ AND D.FILE_TYPE_CD = #{fileTypeCd}
+             </if>
+
+             <if test="archivesTypeCd != null and archivesTypeCd != '' and archivesTypeCd.equalsIgnoreCase('60')">
+		     LEFT OUTER JOIN TB_ONLINE_ARCHIVES_DETAIL E
+		         ON A.ARCHIVES_SEQ = E.ARCHIVES_SEQ
+		            AND E.DETAIL_SEQ = 1
+		            AND A.ARCHIVES_TYPE_CD = '60'
+             </if>
+        WHERE A.ARCHIVES_TYPE_CD = #{archivesTypeCd}
+              AND A.DEL_YN = 'N'
+              AND A.ACTIVE_YN = 'Y'
+		<if test="code01 != null and code01 != ''">
+		    AND A.CODE01 = #{code01}
+		</if>
+		<if test="code02 != null and code02 != ''">
+		    AND A.CODE02 = #{code02}
+		</if>
+		<if test="partCode != null and partCode != ''">
+		    AND A.PART_CODE = #{partCode}
+		</if>
+		<if test="year != null and year != ''">
+		    AND TO_CHAR(TO_DATE(A.BIRTH_DATE, 'YYYYMMDD'), 'YYYY') = #{year}
+		</if>
+		<if test="searchText != null and searchText != ''">
+            <choose>
+			    <when test="searchType.equalsIgnoreCase('TARGET')">
+			    AND A.TARGET_NAME LIKE '%' || #{searchText} || '%'
+			    </when>
+			    <when test="searchType.equalsIgnoreCase('STUDY')">
+			    AND A.CHERCHEUR LIKE '%' || #{searchText} || '%'
+			    </when>
+			    <when test="searchType.equalsIgnoreCase('SUBJECT')">
+			    AND A.SUBJECT LIKE '%' || #{searchText} || '%'
+			    </when>
+			    <when test="searchType.equalsIgnoreCase('BIRTH_YEAR')">
+			    AND TO_CHAR(TO_DATE(A.BIRTH_DATE, 'YYYYMMDD'), 'YYYY') = #{searchText}
+			    </when>
+			    <when test="searchType.equalsIgnoreCase('CONTENTS')">
+			    AND E.CONTENTS LIKE '%' || #{searchText} || '%'
+			    </when>
+			</choose>
+		</if>
+        <if test="keyword != null and keyword != ''">
+            AND A.SEARCH_KEYWORD LIKE '%' || #{keyword} || '%'
+        </if>
+
+    </sql>
+
+    <select id="selectArchivesListCount" parameterType="hashMap" resultType="int">
+        <include refid="countHeaderQuery" />
+        <include refid="selectArchivesListQuery"/>
+        <include refid="countTailQuery" />
+    </select>
+
+    <select id="selectArchivesPageList" parameterType="hashMap" resultType="archivesMasterVo">
+        <include refid="pagingHeaderQuery" />
+        <include refid="selectArchivesListQuery"/>
+        <choose>
+		    <when test="searchOrderType != null and searchOrderType.equalsIgnoreCase('ASC')">
+		    ORDER BY A.BIRTH_DATE ASC, A.ARCHIVES_SEQ ASC
+		    </when>
+		    <otherwise>
+		    ORDER BY A.BIRTH_DATE DESC, A.ARCHIVES_SEQ DESC
+		    </otherwise>
+		</choose>
+        <include refid="pagingTailQuery" />
+    </select>
+
+
+    <select id="selectArchivesMasterInfo" parameterType="map" resultType="egovMap">
+        <include refid="tbCodeWithSql"/>
+        <include refid="tbPartCodeWithSql"/>
+        SELECT A.ARCHIVES_SEQ
+              ,A.ARCHIVES_TYPE_CD
+              ,A.CODE01
+              ,A.CODE02
+              ,B.CODE_SUB_NAME AS CODE01_NAME
+              ,C.CODE_SUB_NAME AS CODE02_NAME
+              ,A.TXT_CODE_NAME
+              ,A.PART_CODE
+              ,CODE.CODE_SUB_NAME AS PART_CODE_NAME
+              ,A.TXT_PART_CODE_NAME
+              ,A.SUBJECT
+              ,A.TARGET_NAME
+              ,A.BIRTH_DATE
+              ,TO_CHAR(TO_DATE(A.BIRTH_DATE, 'YYYYMMDD'), 'YYYY') AS BIRTH_YEAR
+              ,A.CHERCHEUR
+              ,A.START_DATE
+              ,A.END_DATE
+              ,   TO_CHAR(TO_DATE(A.START_DATE, 'YYYYMMDD'), 'YYYY-MM')
+               || '~'
+               || (CASE
+                       WHEN TO_CHAR(TO_DATE(A.START_DATE, 'YYYYMMDD'), 'YYYY') = TO_CHAR(TO_DATE(A.END_DATE, 'YYYYMMDD'), 'YYYY') THEN
+                           TO_CHAR(TO_DATE(A.END_DATE, 'YYYYMMDD'), 'MM')
+                       ELSE
+                           TO_CHAR(TO_DATE(A.END_DATE, 'YYYYMMDD'), 'YYYY-MM')
+                   END)
+                   AS TALK_TERM
+              ,A.FILE_ALT
+              ,A.ORG_FILE_NAME
+              ,A.FILE_NAME
+              ,A.FILE_SEQ
+              ,A.SEARCH_KEYWORD
+              ,A.SUMMARY_DESC
+              ,A.COPY_PROTECTION_YN
+              ,A.PUBLIC_MARK
+              ,A.READ_COUNT
+              ,A.HEAD_YN
+              ,A.ACTIVE_YN
+              ,A.CREATE_DATE
+        FROM TB_ONLINE_ARCHIVES A
+             INNER JOIN (SELECT *
+                         FROM TB_CODE
+                         WHERE UP_CODE_SUB_ID IS NULL) B
+                 ON A.CODE01 = B.CODE_SUB_ID
+             LEFT OUTER JOIN (SELECT * FROM TB_CODE) C
+                 ON A.CODE01 = C.UP_CODE_SUB_ID AND A.CODE02 = C.CODE_SUB_ID
+             LEFT OUTER JOIN TB_PART_CODE CODE
+                 ON A.PART_CODE = CODE.CODE_SUB_ID
+        WHERE A.ARCHIVES_SEQ = #{archivesSeq}
+    </select>
+
+
+    <select id="selectArchivesContentList" parameterType="long" resultType="archivesContentVo">
+		SELECT A.ARCHIVES_SEQ
+		      ,A.DETAIL_SEQ
+		      ,A.SUBJECT
+		      ,A.CONTENTS
+		      ,A.SORT_NO
+		      ,A.FILE_SEQ
+		      ,B.FILE_TYPE_CD
+		      ,B.FILE_ATTR_CD
+		      ,B.FILE_ALT
+		      ,B.ORG_FILE_NAME
+		      ,B.FILE_NAME
+		      ,B.FILE_SIZE
+		      ,B.URL
+		      ,B.DOWN_YN
+		      ,B.VIEW_YN
+		      ,B.FREE_YN
+		FROM TB_ONLINE_ARCHIVES_DETAIL A LEFT OUTER JOIN TB_ONLINE_ARCHIVES_FILE B ON A.FILE_SEQ = B.FILE_SEQ
+		WHERE 1 = 1
+		      AND A.ARCHIVES_SEQ = #{archivesSeq}
+		ORDER BY A.SORT_NO, A.DETAIL_SEQ
+    </select>
+
+
+
+    <sql id="selectArchivesFileSql">
+        SELECT A.FILE_SEQ
+              ,A.FILE_ORDER
+              ,A.FILE_TYPE_CD
+              ,A.FILE_ATTR_CD
+              ,A.FILE_ALT
+              ,A.ORG_FILE_NAME
+              ,A.FILE_NAME
+              ,A.FILE_SIZE
+		      ,LOWER(SUBSTR(A.ORG_FILE_NAME
+		                   ,INSTR(A.ORG_FILE_NAME
+		                         ,'.'
+		                         ,-1
+		                         ,1)
+		                   ,LENGTH(A.ORG_FILE_NAME)))
+		           AS FILE_EXT
+              ,A.URL
+              ,A.SORT_NO
+              ,A.DOWN_YN
+              ,A.VIEW_YN
+              ,A.FREE_YN
+              ,B.PAY_YN
+              ,A.DOWN_COUNT
+              ,A.VIEW_COUNT
+              ,A.AMOUNT
+        FROM TB_ONLINE_ARCHIVES_FILE A
+             LEFT OUTER JOIN (<include refid="filePayResultjoinSql"/>) B
+                 ON A.FILE_SEQ = B.FILE_SEQ AND A.FILE_ORDER = B.FILE_ORDER
+        WHERE A.FILE_SEQ = #{fileSeq}
+              <if test="fileOrder != null and fileOrder != ''">
+                  AND A.FILE_ORDER = #{fileOrder}
+              </if>
+              <if test="fileTypeCd != null and fileTypeCd != ''">
+                  AND A.FILE_TYPE_CD = #{fileTypeCd}
+              </if>
+    </sql>
+
+    <select id="selectArchivesFileInfo" parameterType="map" resultType="egovMap">
+        <include refid="selectArchivesFileSql"/>
+    </select>
+
+    <select id="selectArchivesFileList" parameterType="map" resultType="egovMap">
+        <include refid="selectArchivesFileSql"/>
+        ORDER BY A.SORT_NO, A.FILE_ORDER
+    </select>
+
+
+    <update id="increaseArchivesFileDownCount" parameterType="map">
+        UPDATE TB_ONLINE_ARCHIVES_FILE SET DOWN_COUNT = DOWN_COUNT + 1 WHERE FILE_SEQ = #{fileSeq} AND FILE_ORDER = #{fileOrder}
+    </update>
+
+    <update id="increaseArchivesFileViewCount" parameterType="map">
+        UPDATE TB_ONLINE_ARCHIVES_FILE SET VIEW_COUNT = VIEW_COUNT + 1 WHERE FILE_SEQ = #{fileSeq} AND FILE_ORDER = #{fileOrder}
+    </update>
+
+
+    <select id="selectArchivesContentFileList" parameterType="long" resultType="egovMap">
+		SELECT C.ARCHIVES_SEQ
+		      ,B.DETAIL_SEQ
+		      ,A.FILE_SEQ
+		      ,A.FILE_ORDER
+		      ,A.FILE_TYPE_CD
+		      ,A.FILE_ATTR_CD
+		      ,A.FILE_ALT
+		      ,A.ORG_FILE_NAME
+		      ,SUBSTR(A.ORG_FILE_NAME, 0, INSTR(A.ORG_FILE_NAME, '.', -1) - 1) AS ORG_FILE_ONLY_NAME
+		      ,UPPER(SUBSTR(A.ORG_FILE_NAME, INSTR(A.ORG_FILE_NAME, '.', -1) + 1)) AS FILE_EXT
+		      ,A.FILE_NAME
+		      ,A.FILE_SIZE
+		      ,A.URL
+		      ,A.DOWN_YN
+		      ,A.VIEW_YN
+		      ,A.FREE_YN
+		      ,A.AMOUNT
+		FROM TB_ONLINE_ARCHIVES_FILE A
+		     INNER JOIN TB_ONLINE_ARCHIVES_DETAIL B ON A.FILE_SEQ = B.FILE_SEQ
+		     INNER JOIN TB_ONLINE_ARCHIVES C ON B.ARCHIVES_SEQ = C.ARCHIVES_SEQ
+		WHERE C.ARCHIVES_SEQ = #{archivesSeq}
+		ORDER BY B.SORT_NO ASC, A.SORT_NO ASC, A.FILE_TYPE_CD ASC
+    </select>
+
+    <update id="increaseArchivesReadCount">
+        UPDATE TB_ONLINE_ARCHIVES SET READ_COUNT = READ_COUNT + 1 WHERE ARCHIVES_SEQ = #{archivesSeq}
+    </update>
+
+    <select id="selectArchivesTalkTargetCountList" parameterType="map" resultType="egovMap">
+		SELECT X.TARGET_NAME, NVL(Y.CNT, 0) AS CNT10, NVL(Z.CNT, 0) AS CNT20
+		FROM (SELECT A.TARGET_NAME
+		      FROM TB_ONLINE_ARCHIVES A
+		      WHERE A.DEL_YN = 'N'
+		            AND ACTIVE_YN = 'Y'
+		            AND A.ARCHIVES_TYPE_CD = '10'
+		            AND A.TARGET_NAME BETWEEN #{fir} AND #{sec}
+		      GROUP BY A.TARGET_NAME) X
+		     LEFT OUTER JOIN (SELECT TARGET_NAME, COUNT(1) AS CNT
+		                      FROM TB_ONLINE_ARCHIVES
+		                      WHERE ARCHIVES_TYPE_CD = '10'
+		                            AND CODE01 = '10'
+		                      GROUP BY TARGET_NAME) Y
+		         ON X.TARGET_NAME = Y.TARGET_NAME
+		     LEFT OUTER JOIN (SELECT TARGET_NAME, COUNT(1) AS CNT
+		                      FROM TB_ONLINE_ARCHIVES
+		                      WHERE ARCHIVES_TYPE_CD = '10'
+		                            AND CODE01 = '20'
+		                      GROUP BY TARGET_NAME) Z
+		         ON X.TARGET_NAME = Z.TARGET_NAME
+    </select>
+
+    <select id="selectArchivesIntroInfo" parameterType="string" resultMap="introMap">
+        SELECT ARCHIVES_TYPE_CD
+              ,CONTENTS
+        FROM TB_ONLINE_ARCHIVES_INTRO
+        WHERE ARCHIVES_TYPE_CD = #{archivesTypeCd}
+    </select>
+
+    <select id="selectArchivesSubCodeYearList" parameterType="map" resultType="egovMap">
+		SELECT YEAR
+		FROM (SELECT SUBSTR(TO_CHAR(TO_DATE(A.BIRTH_DATE, 'YYYYMMDD'), 'YYYY'), 0, 3) || '0' AS HEAD_YEAR
+		            ,TO_CHAR(TO_DATE(A.BIRTH_DATE, 'YYYYMMDD'), 'YYYY') AS YEAR
+		      FROM TB_ONLINE_ARCHIVES A
+		      WHERE A.ARCHIVES_TYPE_CD = #{archivesTypeCd}
+		            AND A.CODE01 = #{code01}
+		            <if test="code02 != null and code02 != ''">
+                    AND A.CODE02 = #{code02}
+		            </if>
+		            AND A.DEL_YN = 'N'
+		            AND A.ACTIVE_YN = 'Y')
+		WHERE 1 = 1
+		      <if test="headYear != null and headYear != ''">
+		      AND HEAD_YEAR = #{headYear}
+		      </if>
+		GROUP BY YEAR
+		ORDER BY YEAR ASC
+    </select>
+
+    <select id="selectArchivesSubCodeHeadYearList" parameterType="map" resultType="egovMap">
+		SELECT YEAR
+		FROM (SELECT SUBSTR(TO_CHAR(TO_DATE(A.BIRTH_DATE, 'YYYYMMDD'), 'YYYY'), 0, 3) || '0' AS YEAR
+		      FROM TB_ONLINE_ARCHIVES A
+		      WHERE A.ARCHIVES_TYPE_CD = #{archivesTypeCd}
+		            AND A.CODE01 = #{code01}
+		            <if test="code02 != null and code02 != ''">
+                    AND A.CODE02 = #{code02}
+		            </if>
+		            AND A.DEL_YN = 'N'
+		            AND A.ACTIVE_YN = 'Y')
+		GROUP BY YEAR
+		ORDER BY YEAR ASC
+    </select>
+
+    <select id="selectArchivesHeadInfo" parameterType="string" resultType="archivesMasterVo">
+		SELECT A.ARCHIVES_SEQ
+		      ,A.ARCHIVES_TYPE_CD
+		      ,A.CODE01
+		      ,A.CODE02
+		      ,A.SUBJECT
+		      ,A.TARGET_NAME
+		      ,A.BIRTH_DATE
+		      ,TO_CHAR(TO_DATE(A.BIRTH_DATE, 'YYYYMMDD'), 'YYYY') AS BIRTH_YEAR
+		      ,A.CHERCHEUR
+		      ,A.START_DATE
+		      ,A.END_DATE
+              ,   TO_CHAR(TO_DATE(A.START_DATE, 'YYYYMMDD'), 'YYYY-MM')
+               || '~'
+               || (CASE
+                       WHEN TO_CHAR(TO_DATE(A.START_DATE, 'YYYYMMDD'), 'YYYY') = TO_CHAR(TO_DATE(A.END_DATE, 'YYYYMMDD'), 'YYYY') THEN
+                           TO_CHAR(TO_DATE(A.END_DATE, 'YYYYMMDD'), 'MM')
+                       ELSE
+                           TO_CHAR(TO_DATE(A.END_DATE, 'YYYYMMDD'), 'YYYY-MM')
+                   END)
+                   AS TALK_TERM
+		      ,A.FILE_ALT
+		      ,A.ORG_FILE_NAME
+		      ,A.FILE_NAME
+		      ,A.SUMMARY_DESC
+		      ,A.READ_COUNT
+		      ,A.HEAD_YN
+		      ,A.ACTIVE_YN
+		      ,A.CREATE_DATE
+		      ,B.CONTENTS
+		FROM TB_ONLINE_ARCHIVES A
+		     LEFT OUTER JOIN TB_ONLINE_ARCHIVES_DETAIL B
+		         ON A.ARCHIVES_SEQ = B.ARCHIVES_SEQ
+		            AND B.DETAIL_SEQ = 1
+		WHERE A.ARCHIVES_TYPE_CD = #{archivesTypeCd}
+		      AND A.DEL_YN = 'N'
+		      AND A.ACTIVE_YN = 'Y'
+		      AND A.HEAD_YN = 'Y'
+    </select>
+
+    <select id="selectArchivesRelMovieList" parameterType="long" resultType="egovMap">
+        SELECT A.ARCHIVES_SEQ
+              ,A.SEQ
+              ,A.MOVIE_ID
+              ,A.MOVIE_SEQ
+              ,B.TITLE
+              ,B.PROD_YEAR
+              ,B.DIRECTOR
+              ,B.NATION_CLSS
+        FROM TB_ONLINE_ARCHIVES_REL_MOVIE A
+             INNER JOIN MOVIE_SE B
+                 ON A.MOVIE_ID = B.MOVIE_ID
+                    AND A.MOVIE_SEQ = B.MOVIE_SEQ
+        WHERE A.ARCHIVES_SEQ = #{archivesSeq}
+        ORDER BY A.SEQ
+    </select>
+
+    <select id="selectArchivesRelPersonList" parameterType="long" resultType="egovMap">
+		SELECT A.ARCHIVES_SEQ
+		      ,A.SEQ
+		      ,A.PERSON_ID
+		      ,B.KORNM AS PERSON_NAME
+		      ,SUBSTR(B.BIRTH_DATE, 0, 4) AS BIRTH_YEAR
+		      ,SUBSTR(B.DEATH_DATE, 0, 4) AS DEATH_YEAR
+		      ,D.FIELD_NM AS PERSONFIELD
+		FROM TB_ONLINE_ARCHIVES_REL_PERSON A
+		     INNER JOIN PERSON B ON A.PERSON_ID = B.PERSON_ID
+		     INNER JOIN PERSON_FIELD C ON B.PERSON_ID = C.PERSON_ID
+		     INNER JOIN FIELD_CODE D ON D.FIELD_NO = C.FIELD_NO
+		WHERE A.ARCHIVES_SEQ = #{archivesSeq}
+		      AND B.KORNM IS NOT NULL
+		      AND C.REP_DIV = 'Y'
+		ORDER BY A.SEQ
+    </select>
+
+    <select id="selectArchivesRelLinkList" parameterType="long" resultType="egovMap">
+        SELECT ARCHIVES_SEQ
+              ,SEQ
+              ,SUBJECT
+              ,URL
+              ,SORT_NO
+        FROM TB_ONLINE_ARCHIVES_REL_LINK
+        WHERE ARCHIVES_SEQ = #{archivesSeq}
+        ORDER BY SORT_NO, SEQ
+    </select>
+
+    <sql id="selectArchivesBoardListQuery">
+		SELECT A.BOARD_SEQ
+		      ,A.TITLE
+		      ,A.CONTENT_DESC
+		      ,A.CREATE_DATE
+		      ,A.CREATE_ID
+		      ,A.CREATE_NAME
+		      ,A.READ_COUNT
+        FROM TB_ONLINE_ARCHIVES_BOARD A
+        WHERE 1 = 1
+
+        <if test="searchText != null and searchText != ''">
+            <choose>
+                <when test="searchType.equalsIgnoreCase('TITLE')">
+                AND A.TITLE LIKE '%' || #{searchText} || '%'
+                </when>
+                <when test="searchType.equalsIgnoreCase('CONTENT_DESC')">
+                AND A.CONTENT_DESC LIKE '%' || #{searchText} || '%'
+                </when>
+            </choose>
+        </if>
+    </sql>
+
+    <select id="selectArchivesBoardListCount" parameterType="hashMap" resultType="int">
+        <include refid="countHeaderQuery" />
+        <include refid="selectArchivesBoardListQuery"/>
+        <include refid="countTailQuery" />
+    </select>
+
+    <select id="selectArchivesBoardPageList" parameterType="hashMap" resultType="egovMap">
+        <include refid="pagingHeaderQuery" />
+        <include refid="selectArchivesBoardListQuery"/>
+        <choose>
+            <when test="searchOrderType != null and searchOrderType.equalsIgnoreCase('ASC')">
+            ORDER BY A.BOARD_SEQ ASC
+            </when>
+            <otherwise>
+            ORDER BY A.BOARD_SEQ DESC
+            </otherwise>
+        </choose>
+        <include refid="pagingTailQuery" />
+    </select>
+
+
+    <select id="selectArchivesBoardInfo" parameterType="long" resultMap="boardMap">
+        SELECT A.BOARD_SEQ
+              ,A.TITLE
+              ,A.CONTENT_DESC
+              ,A.CREATE_DATE
+              ,A.CREATE_ID
+              ,A.CREATE_NAME
+              ,A.READ_COUNT
+        FROM TB_ONLINE_ARCHIVES_BOARD A
+        WHERE A.BOARD_SEQ = #{boardSeq}
+    </select>
+
+    <update id="increaseArchivesBoardReadCount" parameterType="long">
+        UPDATE TB_ONLINE_ARCHIVES_BOARD SET READ_COUNT = READ_COUNT + 1 WHERE BOARD_SEQ = #{boardSeq}
+    </update>
+
+	<select id="selectPayInfo" parameterType="hashMap" resultType="egovMap">
+        SELECT SUBJECT || '-' || TARGET_NAME AS SUBJECT
+              ,AMOUNT
+		  FROM TB_ONLINE_ARCHIVES T1
+		  INNER JOIN TB_ONLINE_ARCHIVES_FILE T2 ON T1.FILE_SEQ = T2.FILE_SEQ
+        WHERE T1.ARCHIVES_SEQ = #{archivesSeq}
+            AND T2.FILE_SEQ = #{fileSeq}
+            AND T2.FILE_ORDER = #{fileOrder}
+    </select>
+
+    <insert id="insertPayResult" parameterType="hashMap">
+
+        INSERT INTO TB_ARCHIVES_PAY_RESULT(
+        	PAY_SEQ,ARCHIVES_SEQ,FILE_SEQ, FILE_ORDER, USERID, ITEMNAME
+	      , PAY_TYPE,PAYSUCCESS, PAYMETHOD, RESULTCODE
+	      , RESULTMSG, TID, MOID
+	      , RESULTPRICE, PGAUTHDATE, PGAUTHTIME
+	      , NOHPP, DIRECTBANKCODE, RCASH_RSLT
+	      , RESULTCASHNOAPP1, CARDNUMBER, AUTHCODE
+	      , CARDQUOTA, CARDCODE, CARDISSUERCODE
+	      , CREATE_ID, CREATE_DATE, UPDATE_ID, UPDATE_DATE
+        )
+        VALUES (
+			TB_ARCHIVES_PAY_RESULT_SEQ.NEXTVAL, #{archivesSeq}, #{fileSeq}, #{fileOrder}, #{userId}, #{sMovieTitleStringKorean}
+          , '0', #{sPaySuccess}, #{payMethod}, #{resultCode}
+          , #{resultMsg}, #{tid}, #{MOID}
+          , #{resultPrice}, #{applDate}, #{applTime}
+          , #{NoHPP}, #{DirectBankCode}, #{RCash_rslt}
+          , #{ResultCashNoApp1}, #{CARD_Num}, #{AuthCode}
+          , #{CARD_Quota}, #{CARD_Code}, #{CardIssuerCode}
+          , #{userId}, SYSDATE, #{userId}, SYSDATE
+
+        )
+    </insert>
+
+    <select id="selectMainArchivesContentList" resultType="mainArchivesContentVo">
+		SELECT A.MAIN_CONTENT_ID
+		      ,B.ARCHIVES_SEQ
+		      ,B.FILE_SEQ
+		      ,B.SUBJECT
+		      ,B.TARGET_NAME
+		      ,B.FILE_ALT
+		      ,B.FILE_NAME
+		      ,B.ORG_FILE_NAME
+		      ,C.CONTENTS
+		      ,D.FILE_ALT AS GALLARY_FILE_ALT
+		      ,D.FILE_NAME AS GALLARY_FILE_NAME
+		      ,D.ORG_FILE_NAME AS GALLARY_ORG_FILE_NAME
+		FROM TB_MAIN_CONTENT A
+		     INNER JOIN TB_ONLINE_ARCHIVES B ON A.KEY1 = B.ARCHIVES_SEQ
+		     INNER JOIN TB_ONLINE_ARCHIVES_DETAIL C ON C.ARCHIVES_SEQ = B.ARCHIVES_SEQ
+		     LEFT OUTER JOIN (SELECT FILE_SEQ
+		                            ,FILE_ORDER
+		                            ,FILE_TYPE_CD
+		                            ,FILE_ATTR_CD
+		                            ,FILE_ALT
+		                            ,ORG_FILE_NAME
+		                            ,FILE_NAME
+		                      FROM TB_ONLINE_ARCHIVES_FILE
+		                      WHERE FILE_TYPE_CD = '100' <!-- 사료관 콘텐츠 갤러리 파일  -->
+		                            AND SORT_NO = 1) D
+		         ON B.FILE_SEQ = D.FILE_SEQ
+		WHERE A.CONTENT_TYPE_CD = 'ARCHIVES_CONTENT'
+		      AND B.ARCHIVES_TYPE_CD = '60' <!-- 사료관 콘텐츠 -->
+		      AND B.DEL_YN = 'N'
+		      AND B.ACTIVE_YN = 'Y'
+		      AND C.DETAIL_SEQ = 1
+		ORDER BY A.SORT_NO ASC
+    </select>
+
+    <select id="selectTheaterList" resultType="egovMap">
+		SELECT A.MAIN_CONTENT_ID
+		      ,A.CONTENT_TYPE_CD
+		      ,A.KEY1 AS OTHER_ID
+		      ,B.TITLE
+		      ,A.FILE_ALT
+		      ,A.FILE_NAME
+		      ,A.ORG_FILE_NAME
+		FROM TB_MAIN_CONTENT A INNER JOIN OTHER B ON A.KEY1 = B.OTHER_ID
+		WHERE A.CONTENT_TYPE_CD = 'THEATER'
+		      AND A.ACTIVE_YN = 'Y'
+		      AND B.TYPE_CLSS = 'P'
+		ORDER BY A.SORT_NO ASC
+    </select>
+
+</mapper>

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="egovframework.ag.homepage.common.service.KmdbDao">
+
+	<sql id="countHeaderQuery">
+		SELECT COUNT(1) AS TOTAL_COUNT FROM (
+    </sql>
+
+    <sql id="countTailQuery">
+        )
+    </sql>
+
+    <sql id="pagingHeaderQuery">
+		SELECT * FROM (SELECT ROWNUM AS RNUM, Z.* FROM (
+    </sql>
+
+    <sql id="pagingTailQuery">
+        ) Z WHERE ROWNUM &lt;= #{_page} * #{_pageSize}) WHERE RNUM &gt; (#{_page} - 1) * #{_pageSize}
+    </sql>
+
+    <select id="selectSimpleMovieInfo" parameterType="map" resultType="egovMap">
+		SELECT A.MOVIE_ID
+		      ,A.MOVIE_SEQ
+              ,A.TITLE AS TITLE
+              ,A.ORG_TIT AS ORG_TITLE
+              ,A.TITLE_ENG AS EN_TITLE
+		      ,A.DIRECTOR
+		      ,A.PROD_YEAR
+		FROM MOVIE_SE A
+		WHERE A.MOVIE_ID = #{movieId}
+		      AND A.MOVIE_SEQ = #{movieSeq}
+    </select>
+
+    <select id="selectSimplePersonList" parameterType="map" resultType="egovMap">
+		SELECT A.PERSON_ID
+		      ,CASE A.NATIONAL_CLSS WHEN 'F' THEN (CASE WHEN A.ENGNM IS NULL THEN A.KORNM ELSE A.ENGNM END) ELSE A.KORNM END AS NAME
+		      ,PERSONFIELD
+		      ,A.BIRTH_DATE
+		      ,CASE WHEN NVL(A.BIRTH_DATE, '00000000') = '00000000' THEN '' ELSE SUBSTR(A.BIRTH_DATE, 0, 4) END AS BIRTH_YEAR
+		      ,A.DEATH_DATE
+		      ,CASE WHEN NVL(A.DEATH_DATE, '00000000') = '00000000' THEN '' ELSE SUBSTR(A.DEATH_DATE, 0, 4) END AS DEATH_YEAR
+		FROM PERSON A
+		WHERE PERSON_ID IN
+		<foreach collection="list" item="item" index="index" separator="," open="(" close=")">
+		    #{item}
+		</foreach>
+    </select>
+
+</mapper>

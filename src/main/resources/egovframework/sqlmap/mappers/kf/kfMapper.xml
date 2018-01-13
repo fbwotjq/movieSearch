@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="egovframework.ag.homepage.common.service.CommonKfDao">
+
+	<resultMap id="selectCodeTreeMap" type="egovMap">
+		<collection property="subList" column="{codeGroupIdParam=C_OPTION_VALUE1, cCodeSubIdParam=C_CODE_SUB_ID_PARAM}" javaType="java.util.ArrayList" ofType="egovMap" select="selectCodeSubList"/>
+	</resultMap>
+
+	<select id="selectMenuList" resultType="egovMap">
+		SELECT    C_PMENU_ID
+					, C_PAGE_ID
+					, C_CHANNEL_CD
+					, C_LANGUAGE_CD
+					, C_TARGET_CD
+					, C_PAGE_POPUP
+					, C_PARENT_ID
+					, C_PMENU_DEPTH
+					, C_PMENU_ORDER
+					, C_PMENU_TITLE
+					, C_VIEW_CD
+					, C_STATUS_CD
+					, C_REGISTER_ID
+					, TO_CHAR(TB_PAGE_MENU.C_REGIST_DATETIME, 'YYYY-MM-DD') AS C_REGIST_DATETIME
+					, C_UPDATER_ID
+					, TO_CHAR(TB_PAGE_MENU.C_UPDATE_DATETIME, 'YYYY-MM-DD') AS C_UPDATE_DATETIME
+					, C_IS_SUBMAIN
+					, NVL(FNC_CODE_SUB_NAME('C004', TB_PAGE_MENU.C_CHANNEL_CD),'') AS C_CHANNEL_NAME
+					, NVL(FNC_CODE_SUB_NAME('C005', TB_PAGE_MENU.C_LANGUAGE_CD),'') AS C_LANGUAGE_NAME
+					, NVL(FNC_CODE_SUB_NAME('C010', TB_PAGE_MENU.C_TARGET_CD),'') AS C_TARGET_NAME
+					, NVL((SELECT T2.C_PMENU_TITLE FROM TB_PAGE_MENU T2 WHERE T2.C_PMENU_ID = TB_PAGE_MENU.C_PARENT_ID), 'HOME') AS C_PARENT_TITLE
+					, NVL((SELECT C_PROTOCOL_CD FROM TB_PAGE_CODE WHERE C_PAGE_ID = TB_PAGE_MENU.C_PAGE_ID), '') AS C_PROTOCOL_CD
+					, NVL((SELECT C_PAGE_TITLE FROM TB_PAGE_CODE WHERE C_PAGE_ID = TB_PAGE_MENU.C_PAGE_ID), '') AS C_PAGE_TITLE
+					, NVL((SELECT C_PAGE_PATH FROM TB_PAGE_CODE WHERE C_PAGE_ID = TB_PAGE_MENU.C_PAGE_ID), '') AS C_PAGE_PATH
+					, DECODE(CONNECT_BY_ISLEAF,'0','Y','N') LEAF_YN
+					, LEVEL LEVEL_NUM
+			FROM TB_PAGE_MENU
+	    WHERE 1 = 1
+	    AND C_LANGUAGE_CD = 'ko'
+	    AND C_CHANNEL_CD = '03'
+	    START WITH C_PARENT_ID = 'PM_00000000' CONNECT BY PRIOR C_PMENU_ID=C_PARENT_ID
+    	ORDER SIBLINGS BY C_PMENU_ORDER
+	</select>
+
+	<select id="selectCodeList" resultType="egovMap">
+		SELECT C_CODE_GROUP_ID
+				 , C_CODE_SUB_ID
+				 , C_CODE_SUB_NAME
+				 , C_OPTION_VALUE1
+				 , C_OPTION_VALUE2
+				 , C_OPTION_VALUE3
+				 , C_OPTION_VALUE4
+				 , C_OPTION_VALUE5
+				 , C_STATUS_CD
+				 , C_REGISTER_ID
+				 , TO_CHAR(C_REGIST_DATETIME, 'YYYY-MM-DD') AS C_REGIST_DATETIME
+				 , C_UPDATER_ID
+				 , TO_CHAR(C_UPDATE_DATETIME, 'YYYY-MM-DD') AS C_UPDATE_DATETIME
+		 FROM TB_CODE_SUB
+	    WHERE 1 = 1
+	    <if test='codeGroupId != null and codeGroupId != ""'>
+			AND C_CODE_GROUP_ID = #{codeGroupId,jdbcType=VARCHAR}
+		</if>
+		<if test='codeSubId != null and codeSubId != ""'>
+			AND C_CODE_SUB_ID LIKE '%' || #{codeSubId,jdbcType=VARCHAR} || '%'
+		</if>
+		<if test='codeSubName != null and codeSubName != ""'>
+			AND C_CODE_SUB_NAME LIKE '%' || #{codeSubName,jdbcType=VARCHAR} || '%'
+		</if>
+		<if test='optionValue1 != null and optionValue1 != ""'>
+			AND C_OPTION_VALUE1 = #{optionValue1,jdbcType=VARCHAR}
+		</if>
+		<if test='optionValue2 != null and optionValue2 != ""'>
+			AND C_OPTION_VALUE2 = #{optionValue2,jdbcType=VARCHAR}
+		</if>
+		<if test='optionValue3 != null and optionValue3 != ""'>
+			AND C_OPTION_VALUE3 = #{optionValue3,jdbcType=VARCHAR}
+		</if>
+		<if test='optionValue4 != null and optionValue4 != ""'>
+			AND C_OPTION_VALUE4 = #{optionValue4,jdbcType=VARCHAR}
+		</if>
+		<if test='optionValue5 != null and optionValue5 != ""'>
+			AND C_OPTION_VALUE5 = #{optionValue5,jdbcType=VARCHAR}
+		</if>
+		<if test='statusCd != null and statusCd != ""'>
+			AND C_STATUS_CD = #{statusCd,jdbcType=CHAR}
+		</if>
+		<if test='exceptId != null and exceptId != ""'>
+			AND C_CODE_SUB_ID != #{exceptId,jdbcType=VARCHAR}
+		</if>
+		<if test='codeSubIds != null and codeSubIds != ""'>
+			AND
+    		C_CODE_SUB_ID IN
+    		<foreach collection="codeSubIds" item="list" separator="," open="(" close=")">
+    			#{list,jdbcType=VARCHAR}
+    		</foreach>
+		</if>
+		ORDER BY ${sortField} ${sortWord}, C_CODE_GROUP_ID ASC, C_CODE_SUB_ID ASC
+	</select>
+
+
+    <select id="selectCodeInfo" parameterType="map" resultType="egovMap">
+        SELECT C_CODE_GROUP_ID
+                 , C_CODE_SUB_ID
+                 , C_CODE_SUB_NAME
+                 , C_OPTION_VALUE1
+                 , C_OPTION_VALUE2
+                 , C_OPTION_VALUE3
+                 , C_OPTION_VALUE4
+                 , C_OPTION_VALUE5
+                 , C_STATUS_CD
+                 , C_REGISTER_ID
+                 , TO_CHAR(C_REGIST_DATETIME, 'YYYY-MM-DD') AS C_REGIST_DATETIME
+                 , C_UPDATER_ID
+                 , TO_CHAR(C_UPDATE_DATETIME, 'YYYY-MM-DD') AS C_UPDATE_DATETIME
+         FROM TB_CODE_SUB
+        WHERE 1 = 1
+            AND C_CODE_GROUP_ID = #{codeGroupId}
+            AND C_CODE_SUB_ID = #{codeSubId}
+    </select>
+
+	<select id="selectCodeTreeList" resultMap="selectCodeTreeMap">
+		SELECT C_CODE_GROUP_ID
+		         , '' AS C_UP_CODE_SUB_ID
+				 , C_CODE_SUB_ID
+				 , C_CODE_SUB_ID AS C_CODE_SUB_ID_PARAM
+				 , C_CODE_SUB_NAME
+				 , C_OPTION_VALUE1
+				 , C_OPTION_VALUE2
+				 , C_OPTION_VALUE3
+				 , C_OPTION_VALUE4
+				 , C_OPTION_VALUE5
+				 , C_STATUS_CD
+				 , C_REGISTER_ID
+				 , TO_CHAR(C_REGIST_DATETIME, 'YYYY-MM-DD') AS C_REGIST_DATETIME
+				 , C_UPDATER_ID
+				 , TO_CHAR(C_UPDATE_DATETIME, 'YYYY-MM-DD') AS C_UPDATE_DATETIME
+		 FROM TB_CODE_SUB
+	    WHERE 1 = 1
+	    <if test='codeGroupId != null and codeGroupId != ""'>
+			AND C_CODE_GROUP_ID = #{codeGroupId,jdbcType=VARCHAR}
+		</if>
+		<if test='codeSubId != null and codeSubId != ""'>
+			AND C_CODE_SUB_ID LIKE '%' || #{codeSubId,jdbcType=VARCHAR} || '%'
+		</if>
+		<if test='codeSubName != null and codeSubName != ""'>
+			AND C_CODE_SUB_NAME LIKE '%' || #{codeSubName,jdbcType=VARCHAR} || '%'
+		</if>
+		<if test='optionValue1 != null and optionValue1 != ""'>
+			AND C_OPTION_VALUE1 = #{optionValue1,jdbcType=VARCHAR}
+		</if>
+		<if test='optionValue2 != null and optionValue2 != ""'>
+			AND C_OPTION_VALUE2 = #{optionValue2,jdbcType=VARCHAR}
+		</if>
+		<if test='optionValue3 != null and optionValue3 != ""'>
+			AND C_OPTION_VALUE3 = #{optionValue3,jdbcType=VARCHAR}
+		</if>
+		<if test='optionValue4 != null and optionValue4 != ""'>
+			AND C_OPTION_VALUE4 = #{optionValue4,jdbcType=VARCHAR}
+		</if>
+		<if test='optionValue5 != null and optionValue5 != ""'>
+			AND C_OPTION_VALUE5 = #{optionValue5,jdbcType=VARCHAR}
+		</if>
+		<if test='statusCd != null and statusCd != ""'>
+			AND C_STATUS_CD = #{statusCd,jdbcType=CHAR}
+		</if>
+		<if test='exceptId != null and exceptId != ""'>
+			AND C_CODE_SUB_ID != #{exceptId,jdbcType=VARCHAR}
+		</if>
+		<if test='codeSubIds != null and codeSubIds != ""'>
+			AND
+    		C_CODE_SUB_ID IN
+    		<foreach collection="codeSubIds" item="list" separator="," open="(" close=")">
+    			#{list,jdbcType=VARCHAR}
+    		</foreach>
+		</if>
+		ORDER BY ${sortField} ${sortWord}, C_CODE_GROUP_ID ASC, C_CODE_SUB_ID ASC
+	</select>
+
+	<select id="selectCodeSubList" resultType="egovMap">
+		SELECT C_CODE_GROUP_ID
+		         , #{cCodeSubIdParam} AS C_UP_CODE_SUB_ID
+				 , C_CODE_SUB_ID
+				 , C_CODE_SUB_NAME
+				 , C_OPTION_VALUE1
+				 , C_OPTION_VALUE2
+				 , C_OPTION_VALUE3
+				 , C_OPTION_VALUE4
+				 , C_OPTION_VALUE5
+				 , C_STATUS_CD
+				 , C_REGISTER_ID
+				 , TO_CHAR(C_REGIST_DATETIME, 'YYYY-MM-DD') AS C_REGIST_DATETIME
+				 , C_UPDATER_ID
+				 , TO_CHAR(C_UPDATE_DATETIME, 'YYYY-MM-DD') AS C_UPDATE_DATETIME
+		 FROM TB_CODE_SUB
+	    WHERE C_CODE_GROUP_ID = #{codeGroupIdParam}
+		ORDER BY C_CODE_SUB_ID ASC
+	</select>
+</mapper>

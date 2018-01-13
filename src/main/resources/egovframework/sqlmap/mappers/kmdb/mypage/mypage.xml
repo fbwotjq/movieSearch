@@ -1,0 +1,736 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="egovframework.ag.homepage.member.service.MyPageDao">
+
+    <resultMap id="textMap" type="egovMap">
+        <result property="contentDesc" column="CONTENT_DESC" jdbcType="CLOB" javaType="java.lang.String"/>
+    </resultMap>
+
+	<resultMap id="askMap" type="egovMap">
+        <result property="contentDesc" column="CONTENT_DESC" jdbcType="CLOB" javaType="java.lang.String"/>
+        <result property="replyContentDesc" column="REPLY_CONTENT_DESC" jdbcType="CLOB" javaType="java.lang.String"/>
+    </resultMap>
+
+    <resultMap id="movieMap" type="egovMap">
+		<association property="imageInfo" column="{movieIdParam=MOVIE_ID_PARAM,movieSeqParam=MOVIE_SEQ_PARAM}"  javaType="map"  select="selectImageInfo"/>
+		<collection property="actorList" column="{movieIdParam=MOVIE_ID_PARAM,movieSeqParam=MOVIE_SEQ_PARAM}" javaType="java.util.ArrayList" ofType="egovMap" select="selectActorList"/>
+		<collection property="directorList" column="{movieIdParam=MOVIE_ID_PARAM,movieSeqParam=MOVIE_SEQ_PARAM}" javaType="java.util.ArrayList" ofType="egovMap" select="selectDirectorList"/>
+	</resultMap>
+
+
+	<sql id="countHeaderQuery">
+		SELECT COUNT(1) AS TOTAL_COUNT FROM (
+    </sql>
+
+    <sql id="countTailQuery">
+        )
+    </sql>
+
+    <sql id="pagingHeaderQuery">
+		SELECT * FROM (SELECT ROWNUM AS RNUM, Z.* FROM (
+    </sql>
+
+    <sql id="pagingTailQuery">
+        ) Z WHERE ROWNUM &lt;= #{_page} * #{_pageSize}) WHERE RNUM &gt; (#{_page} - 1) * #{_pageSize}
+    </sql>
+
+	<sql id="selectVodListQuery">
+		SELECT A.PAYSEQ
+				,A.MOVIE_ID
+				,A.MOVIE_SEQ
+				,A.MOVIE_TITLE
+				,A.RESULTPRICE
+				,TO_CHAR(A.CREATEDON,'YYYY-MM-DD') CREATEDON
+				,A.USERID
+				,B.RUNTIME
+				,TO_CHAR(TO_DATE(B.RUNTIME*60,'SSSSS'),'HH24:MI:SS') RUNTIME2
+				,B.DIRECTOR
+				,B.PROD_YEAR
+				,B.CASTS
+				,TO_CHAR(SUBSTR(B.CASTS, 1, INSTR(B.CASTS, ',', 1, 3) - 1)) CASTS_VIEW
+		FROM TBLVODPAYRESULT A
+		       INNER JOIN MOVIE_SE B ON A.MOVIE_SEQ = B.MOVIE_SEQ AND A.MOVIE_ID = B.MOVIE_ID
+		WHERE A.USERID = #{userId}
+		<if test="searchText != null and searchText != ''">
+            <choose>
+			    <when test="searchType.equalsIgnoreCase('movieTitle')">
+			    AND A.MOVIE_TITLE LIKE '%' || #{searchText} || '%'
+			    </when>
+			    <when test="searchType.equalsIgnoreCase('director')">
+			    AND B.DIRECTOR LIKE '%' || #{searchText} || '%'
+			    </when>
+			    <when test="searchType.equalsIgnoreCase('casts')">
+			    AND B.CASTS LIKE '%' || #{searchText} || '%'
+			    </when>
+			</choose>
+		</if>
+		<if test="searchOrderType != null and searchOrderType != ''">
+            <choose>
+			    <when test="searchOrderType.equals('DESC')">
+			    ORDER BY MOVIE_TITLE DESC
+			    </when>
+			    <when test="searchOrderType.equals('ASC')">
+			    ORDER BY MOVIE_TITLE ASC
+			    </when>
+			</choose>
+		</if>
+	</sql>
+
+	<select id="selectVodListCount" parameterType="hashMap" resultType="int">
+        <include refid="countHeaderQuery" />
+        <include refid="selectVodListQuery"/>
+        <include refid="countTailQuery" />
+    </select>
+
+    <select id="selectVodPageList" parameterType="hashMap" resultType="egovMap">
+        <include refid="pagingHeaderQuery" />
+        <include refid="selectVodListQuery"/>
+        <include refid="pagingTailQuery" />
+    </select>
+
+    <sql id="selectBookListQuery">
+		SELECT A.PAY_SEQ
+				,A.ARCHIVES_SEQ
+				,A.FILE_SEQ
+				,A.ITEMNAME
+				,A.RESULTPRICE
+				,TO_CHAR(A.CREATE_DATE,'YYYY-MM-DD') CREATE_DATE
+				,A.PAYMETHOD
+				,A.PAY_TYPE
+				,A.USERID
+				,B.FILE_NAME
+				,B.ARCHIVES_TYPE_CD
+				,B.CODE01
+				,B.CODE02
+				,B.SUBJECT
+				,B.TARGET_NAME
+				,TO_CHAR(SUBSTR(B.BIRTH_DATE, 0, 4)) BIRTH_YEAR
+		FROM TB_ARCHIVES_PAY_RESULT A
+		       INNER JOIN TB_ONLINE_ARCHIVES B ON A.ARCHIVES_SEQ = B.ARCHIVES_SEQ
+		WHERE A.USERID = #{userId}
+		<if test="searchText != null and searchText != ''">
+            <choose>
+			    <when test="searchType.equalsIgnoreCase('subject')">
+			    AND B.SUBJECT LIKE '%' || #{searchText} || '%'
+			    </when>
+			    <when test="searchType.equalsIgnoreCase('targetName')">
+			    AND B.TARGET_NAME LIKE '%' || #{searchText} || '%'
+			    </when>
+			</choose>
+		</if>
+		<if test="searchOrderType != null and searchOrderType != ''">
+            <choose>
+			    <when test="searchOrderType.equals('DESC')">
+			    ORDER BY SUBJECT DESC
+			    </when>
+			    <when test="searchOrderType.equals('ASC')">
+			    ORDER BY SUBJECT ASC
+			    </when>
+			</choose>
+		</if>
+	</sql>
+
+	<select id="selectBookListCount" parameterType="hashMap" resultType="int">
+        <include refid="countHeaderQuery" />
+        <include refid="selectBookListQuery"/>
+        <include refid="countTailQuery" />
+    </select>
+
+    <select id="selectBookPageList" parameterType="hashMap" resultType="egovMap">
+        <include refid="pagingHeaderQuery" />
+        <include refid="selectBookListQuery"/>
+        <include refid="pagingTailQuery" />
+    </select>
+
+    <sql id="selectCouponListQuery">
+
+    SELECT X.*
+      FROM (
+		<!--    '관람기간 14일권 -->
+	  SELECT '1' AS COUPON_GUBUN
+			   , PAYSEQ
+			   , ITEMNAME
+			   , RESULTPRICE
+			   , CREATEDON
+			   , BALANCEDATE
+			   , 0 BALANCECNT
+			   , CASE WHEN BALANCEDATE &lt; 14 THEN 'Y' ELSE 'N' END AS BALANCEYN
+			   , PAYMETHOD
+		FROM (
+					SELECT PAYSEQ
+						   , ITEMNAME
+						   , RESULTPRICE
+						   , TO_CHAR(CREATEDON,'YYYY-MM-DD') CREATEDON
+						   , NVL(TO_CHAR(SYSDATE,'YYYYMMDD') - TO_CHAR(CREATEDON,'YYYYMMDD'),9999) BALANCEDATE
+						   , PAYMETHOD
+					FROM TBLVODPAYRESULT
+				  WHERE USERID = #{userId}
+				      AND RESULTPRICE = 5000
+				      AND (PAY_TYPE='0' OR PAY_TYPE='2' OR PAY_TYPE='1')
+			          AND PAYMETHOD != 'FREE'
+			          AND PAYMETHOD != 'YEAR'
+				)
+
+		UNION ALL
+		<!--    '관람기간 30일권 -->
+		SELECT '2' AS COUPON_GUBUN
+			   , PAYSEQ
+			   , ITEMNAME
+			   , RESULTPRICE
+			   , CREATEDON
+			   , BALANCEDATE
+			   , 0 BALANCECNT
+			   , CASE WHEN BALANCEDATE &lt; 30 THEN 'Y' ELSE 'N' END AS BALANCEYN
+			   , PAYMETHOD
+		FROM (
+					SELECT PAYSEQ
+						   , ITEMNAME
+						   , RESULTPRICE
+						   , TO_CHAR(CREATEDON,'YYYY-MM-DD') CREATEDON
+						   , NVL(TO_CHAR(SYSDATE,'YYYYMMDD') - TO_CHAR(CREATEDON,'YYYYMMDD'),9999) BALANCEDATE
+						   , PAYMETHOD
+					FROM TBLVODPAYRESULT
+				  WHERE USERID = #{userId}
+				      AND (RESULTPRICE = 10000 OR RESULTPRICE=10500)
+				      AND (PAY_TYPE='0' OR PAY_TYPE='2' OR PAY_TYPE='3')
+			          AND PAYMETHOD != 'FREE'
+			          AND PAYMETHOD != 'YEAR'
+				)
+		UNION ALL
+		<!--    '5,000원 선불제-->
+		SELECT '3' AS COUPON_GUBUN
+			   , T1.PAYSEQ
+			   , T1.ITEMNAME
+			   , T1.RESULTPRICE
+			   , TO_CHAR(T1.CREATEDON,'YYYY-MM-DD') CREATEDON
+			   , 0 BALANCEDATE
+			   , FLOOR(T1.RESULTPRICE / 500) -  (
+			   	 SELECT COUNT(*) AS VIEWCNT
+			   	   FROM TBLVODPAYRESULT ST1
+			      WHERE ST1.USERID = T1.USERID
+			          AND ST1.RESULTPRICE > 0
+			          AND ST1.PAYMETHOD = 'ADV'
+			          AND ST1.PAYSEQ > T1.PAYSEQ
+			      ) BALANCECNT
+			   , NVL2(T2.PAYSEQ, 'Y', 'N') BALANCEYN
+			   , T1.PAYMETHOD
+		FROM TBLVODPAYRESULT T1
+          LEFT OUTER JOIN (
+          							  SELECT MAX(ST2.PAYSEQ) PAYSEQ
+										FROM TBLVODPAYRESULT ST2
+								       WHERE ST2.USERID = #{userId}
+								           AND RESULTPRICE = 5000
+								      	   AND ST2.PAY_TYPE = '4'
+								      )T2 ON T2.PAYSEQ = T1.PAYSEQ
+      WHERE T1.USERID = #{userId}
+          AND T1.RESULTPRICE = 5000
+          AND T1.PAY_TYPE = '4'
+
+		UNION ALL
+		<!--    '10,000원 선불제  -->
+		SELECT '4' AS COUPON_GUBUN
+			   , T1.PAYSEQ
+			   , T1.ITEMNAME
+			   , T1.RESULTPRICE
+			   , TO_CHAR(T1.CREATEDON,'YYYY-MM-DD') CREATEDON
+			   , 0 BALANCEDATE
+			   , FLOOR(T1.RESULTPRICE / 500) -  (
+			   	 SELECT COUNT(*) AS VIEWCNT
+			   	   FROM TBLVODPAYRESULT ST1
+			      WHERE ST1.USERID = T1.USERID
+			          AND ST1.RESULTPRICE > 0
+			          AND ST1.PAYMETHOD = 'ADV'
+			          AND ST1.PAYSEQ > T1.PAYSEQ
+			      ) BALANCECNT
+			   , NVL2(T2.PAYSEQ, 'Y', 'N') BALANCEYN
+			   , T1.PAYMETHOD
+		FROM TBLVODPAYRESULT T1
+          LEFT OUTER JOIN (
+								      SELECT MAX(ST2.PAYSEQ) PAYSEQ
+										FROM TBLVODPAYRESULT ST2
+								       WHERE ST2.USERID = #{userId}
+								           AND (ST2.RESULTPRICE = 10000 OR ST2.RESULTPRICE = 10500 )
+								      	   AND ST2.PAY_TYPE = '4'
+								   )T2 ON T2.PAYSEQ = T1.PAYSEQ
+      WHERE T1.USERID = #{userId}
+          AND (T1.RESULTPRICE = 10000 OR  T1.RESULTPRICE = 10500 )
+          AND T1.PAY_TYPE = '4'
+      )X
+
+      <if test="searchOrderType != null and searchOrderType != ''">
+            <choose>
+			    <when test="searchOrderType.equals('DESC')">
+			    ORDER BY X.CREATEDON DESC
+			    </when>
+			    <when test="searchOrderType.equals('ASC')">
+			    ORDER BY X.CREATEDON ASC
+			    </when>
+			</choose>
+		</if>
+
+
+	</sql>
+
+	<select id="selectCouponListCount" parameterType="hashMap" resultType="int">
+        <include refid="countHeaderQuery" />
+        <include refid="selectCouponListQuery"/>
+        <include refid="countTailQuery" />
+    </select>
+
+    <select id="selectCouponPageList" parameterType="hashMap" resultType="egovMap">
+        <include refid="pagingHeaderQuery" />
+        <include refid="selectCouponListQuery"/>
+        <include refid="pagingTailQuery" />
+    </select>
+
+	<sql id="selectTextListQuery">
+		SELECT A.REVIEW_SEQ
+				 ,A.TITLE AS SUBJECT
+				 ,A.CREATE_NAME
+				 ,A.CONTENT_DESC
+				 ,A.MOVIE_ID
+				 ,A.CREATE_ID
+				 ,TO_CHAR(A.CREATE_DATE,'YYYY-MM-DD') CREATE_DATE
+				 ,B.TITLE AS MOVIE_TITLE
+				 ,B.DIRECTOR
+				 ,B.PROD_YEAR
+		  FROM TB_USER_REVIEW A
+		       INNER JOIN MOVIE_SE B ON A.MOVIE_SEQ = B.MOVIE_SEQ AND A.MOVIE_ID = B.MOVIE_ID
+		  WHERE A.DEL_YN = 'N'
+		  		AND A.CREATE_ID = #{userId}
+		<if test="searchText != null and searchText != ''">
+            <choose>
+			    <when test="searchType.equalsIgnoreCase('subject')">
+			    AND A.TITLE LIKE '%' || #{searchText} || '%'
+			    </when>
+			    <when test="searchType.equalsIgnoreCase('contentDesc')">
+			    AND A.CONTENT_DESC LIKE '%' || #{searchText} || '%'
+			    </when>
+			    <when test="searchType.equalsIgnoreCase('movieTitle')">
+			    AND B.TITLE LIKE '%' || #{searchText} || '%'
+			    </when>
+			</choose>
+		</if>
+		<if test="searchOrderType != null and searchOrderType != ''">
+            <choose>
+			    <when test="searchOrderType.equals('DESC')">
+			    ORDER BY REVIEW_SEQ DESC
+			    </when>
+			    <when test="searchOrderType.equals('ASC')">
+			    ORDER BY REVIEW_SEQ ASC
+			    </when>
+			</choose>
+		</if>
+    </sql>
+
+    <select id="selectTextListCount" parameterType="hashMap" resultType="int">
+        <include refid="countHeaderQuery" />
+        <include refid="selectTextListQuery"/>
+        <include refid="countTailQuery" />
+    </select>
+
+    <select id="selectTextPageList" parameterType="hashMap" resultType="egovMap">
+        <include refid="pagingHeaderQuery" />
+        <include refid="selectTextListQuery"/>
+        <include refid="pagingTailQuery" />
+    </select>
+
+    <select id="selectTextInfo" parameterType="long" resultMap="textMap">
+		SELECT A.TITLE AS SUBJECT
+				 , TO_CHAR(A.CREATE_DATE,'YYYY-MM-DD') CREATE_DATE
+				 , A.CONTENT_DESC
+				 , A.CREATE_NAME
+				 , A.MOVIE_ID
+				 , B.TITLE AS MOVIE_TITLE
+				 , B.DIRECTOR
+				 , B.PROD_YEAR
+		  FROM TB_USER_REVIEW A
+		       INNER JOIN MOVIE_SE B ON A.MOVIE_SEQ = B.MOVIE_SEQ AND A.MOVIE_ID = B.MOVIE_ID
+		WHERE A.REVIEW_SEQ = #{seq}
+    </select>
+
+    <sql id="selectAskListQuery">
+		SELECT T1.PRIVATE_SEQ
+			     , T1.PRIVATE_TYPE_CD
+			     , T1.TITLE
+			     , T1.CREATE_ID
+			     , T1.CREATE_NAME
+			     , TO_CHAR(T1.CREATE_DATE,'YYYY-MM-DD') CREATE_DATE
+			     , T1.READ_COUNT
+           		 , nvl2(T2.PRIVATE_SEQ,'Y','N') REPLY_YN
+           		 , nvl2(T2.PRIVATE_SEQ,'답변완료','처리중') REPLY_NM
+           		 , T2.PRIVATE_SEQ REPLY_PRIVATE_SEQ
+		  FROM TB_PRIVATE T1
+    	   LEFT OUTER JOIN TB_PRIVATE T2 ON T1.UP_PRIVATE_SEQ = 0 AND T1.PRIVATE_SEQ = T2.UP_PRIVATE_SEQ
+		WHERE T1.CREATE_ID = #{userId}
+		<if test="searchOrderType != null and searchOrderType != ''">
+            <choose>
+			    <when test="searchOrderType.equals('DESC')">
+			    ORDER BY PRIVATE_SEQ DESC
+			    </when>
+			    <when test="searchOrderType.equals('ASC')">
+			    ORDER BY PRIVATE_SEQ ASC
+			    </when>
+			</choose>
+		</if>
+    </sql>
+
+    <select id="selectAskListCount" parameterType="hashMap" resultType="int">
+        <include refid="countHeaderQuery" />
+        <include refid="selectAskListQuery"/>
+        <include refid="countTailQuery" />
+    </select>
+
+    <select id="selectAskPageList" parameterType="hashMap" resultType="egovMap">
+        <include refid="pagingHeaderQuery" />
+        <include refid="selectAskListQuery"/>
+        <include refid="pagingTailQuery" />
+    </select>
+
+    <select id="selectAskInfo" parameterType="long" resultMap="askMap">
+		SELECT T1.PRIVATE_SEQ
+			     , T1.PRIVATE_TYPE_CD
+			     , T1.TITLE
+			     , T1.CONTENT_DESC
+			     , T1.CREATE_ID
+			     , T1.CREATE_NAME
+			     , TO_CHAR(T1.CREATE_DATE,'YYYY-MM-DD') CREATE_DATE
+			     , T1.READ_COUNT
+           		 , nvl2(T2.PRIVATE_SEQ,'Y','N') REPLY_YN
+           		 , nvl2(T2.PRIVATE_SEQ,'답변완료','처리중') REPLY_NM
+			     , T2.TITLE REPLY_TITLE
+           		 , T2.PRIVATE_SEQ REPLY_PRIVATE_SEQ
+			     , T2.TITLE REPLY_TITLE
+			     , T2.CONTENT_DESC REPLY_CONTENT_DESC
+		  FROM TB_PRIVATE T1
+    	   LEFT OUTER JOIN TB_PRIVATE T2 ON T1.UP_PRIVATE_SEQ = 0 AND T1.PRIVATE_SEQ = T2.UP_PRIVATE_SEQ
+		WHERE T1.PRIVATE_SEQ = #{seq}
+    </select>
+
+	<select id="selectMovieCategoryCount" parameterType="hashMap" resultType="int">
+        SELECT COUNT(1) CNT
+		FROM TBLSCRAP
+	  WHERE USERID = #{userId}
+	      AND STYPE = 'M'
+	      AND GUBUN = #{gubun}
+    </select>
+
+	<insert id="insertCategory" parameterType="hashMap">
+        <selectKey keyProperty="sno" resultType="long" order="BEFORE">
+           SELECT NVL(MAX(sno), 0) + 1 FROM TBLSCRAP
+        </selectKey>
+
+        INSERT INTO TBLSCRAP(
+        	SNO, SNAME, GUBUN, USERID, STYPE
+        )
+        VALUES (
+			#{sno}, #{sname}, #{gubun}, #{userId}, #{stype}
+        )
+
+    </insert>
+
+
+    <sql id="selectMovieList">
+	SELECT ML.* FROM (
+		SELECT  U.USERID
+		          , U.CLIP_SEQNO
+		          , U.CLIP_URL
+		          , U.INDATE
+		          , U.CLIP_POSITIONNM
+		          , U.STYPE
+		          , U.SNO
+		          , U.MOVIE_ID
+		          , U.MOVIE_SEQ
+		          , U.MOVIE_ID MOVIE_ID_PARAM
+		          , U.MOVIE_SEQ MOVIE_SEQ_PARAM
+		          , U.PERSON_ID
+		          , U.DIV
+		          , S.SNAME
+		          , U.SEEDATE
+		          , M.TITLE
+				  , M.TITLE_ENG
+		          , M.TYPE_CLSS
+		          , M.NATION_CLSS
+		          , M.PROD_YEAR
+		          , M.RUNTIME
+				  , M.LEVEL_CLSS
+				  , (SELECT  count(*)
+					   FROM MULTI_NEW S_A , MULTI_MOVIE_REL S_B , MULTI_FILE S_C,
+					        ( SELECT CODE , CODE_NM FROM CODEINFO WHERE DIV_ID = 'A09') SCREEN,
+					        ( SELECT CODE , CODE_NM FROM CODEINFO WHERE DIV_ID = 'A08') LEVELNM
+					  WHERE S_A.MSCREEN_CLSS = SCREEN.CODE(+)
+					    AND S_A.LEVEL_CLSS = LEVELNM.CODE(+)
+					    AND S_A.MUL_ID = S_B.MUL_ID
+					    AND S_A.MUL_ID = S_C.MUL_ID
+					    AND S_C.USE_CLSS = '1'
+					    AND S_C.OPEN_YN = 'Y'
+					    AND S_C.F_SIZE > 0
+					    AND SCREEN.CODE_NM = '본편'
+					    AND S_B.MOVIE_ID = U.MOVIE_ID
+					    AND S_B.MOVIE_SEQ = U.MOVIE_SEQ
+			    		) CNT
+			    ,  (SELECT  WM_CONCAT(CMA.PERSON_NM)
+    				 FROM CREDIT_MOVIE CMA
+   					WHERE CMA.MOVIE_ID = U.MOVIE_ID
+          			AND CMA.MOVIE_SEQ = U.MOVIE_SEQ
+           			AND CMA.CREDIT_ID = '005'
+           			AND CMA.OPEN_YN = 'Y'
+ 					GROUP BY CMA.MOVIE_ID, CMA.MOVIE_SEQ
+ 					) ACTOR_LIST_COMMA
+			    ,  (SELECT  WM_CONCAT(CMB.PERSON_NM)
+    				 FROM CREDIT_MOVIE CMB
+   					WHERE CMB.MOVIE_ID = U.MOVIE_ID
+          			AND CMB.MOVIE_SEQ = U.MOVIE_SEQ
+           			AND CMB.CREDIT_ID = '001'
+           			AND CMB.OPEN_YN = 'Y'
+ 					GROUP BY CMB.MOVIE_ID, CMB.MOVIE_SEQ
+ 					) DIRECTOR_LIST_COMMA
+
+		    FROM URLCLIP U, TBLSCRAP S, MOVIE_SE M
+			WHERE 1=1
+			AND U.STYPE = S.STYPE
+			AND U.SNO = S.SNO
+			AND U.USERID = #{userId}
+			AND U.STYPE = 'M'
+			AND U.MOVIE_ID =  M.MOVIE_ID(+)
+			AND U.MOVIE_SEQ = M.MOVIE_SEQ(+)
+			<if test="@egovframework.ag.common.util.StringUtils@toEqualsStr('0', gubun) == false">
+			AND S.GUBUN = #{gubun}
+			</if>
+
+			<if test="@egovframework.ag.common.util.StringUtils@toEqualsStr('0', yearGubun) == false and @egovframework.ag.common.util.StringUtils@toEqualsStr('0', monthGubun) == true">
+			AND ( SUBSTR(SEEDATE,1,4) =  #{yearGubun} OR (SEEDATE='0000-00-00' AND SUBSTR(INDATE,1,4)= #{yearGubun} ))
+			</if>
+			<if test="@egovframework.ag.common.util.StringUtils@toEqualsStr('0', yearGubun) == false and @egovframework.ag.common.util.StringUtils@toEqualsStr('0', monthGubun) == false">
+			AND ( SUBSTR(SEEDATE,1,7) = #{yearGubun}||'-'||#{monthGubun} OR (SEEDATE='0000-00-00' AND SUBSTR(INDATE,1,7)= #{yearGubun}||'-'||#{monthGubun} ))
+			</if>
+
+			)ML
+			WHERE 1=1
+			<if test="searchText != null and searchText != ''">
+	            <choose>
+				    <when test="searchType.equalsIgnoreCase('subject')">
+				    AND ML.TITLE LIKE '%' || #{searchText} || '%'
+				    </when>
+				    <when test="searchType.equalsIgnoreCase('director')">
+				     AND ML.ACTOR_LIST_COMMA LIKE '%' || #{searchText} || '%'
+				    </when>
+				    <when test="searchType.equalsIgnoreCase('actor')">
+				     AND ML.DIRECTOR_LIST_COMMA LIKE '%' || #{searchText} || '%'
+				    </when>
+				</choose>
+			</if>
+			ORDER BY ML.INDATE DESC , ML.CLIP_SEQNO DESC
+
+    </sql>
+
+	<select id="selectMovieListCount" parameterType="hashMap" resultType="int">
+        <include refid="countHeaderQuery" />
+        <include refid="selectMovieList"/>
+        <include refid="countTailQuery" />
+    </select>
+
+    <select id="selectMoviePageList" parameterType="hashMap" resultMap="movieMap">
+        <include refid="pagingHeaderQuery" />
+        <include refid="selectMovieList"/>
+        <include refid="pagingTailQuery" />
+    </select>
+
+
+    <select id="selectMovieCategoryCountList" parameterType="hashMap" resultType="egovMap">
+		SELECT T3.GUBUN
+				, T3.SNO
+				, T3.CNT
+				, NVL(T4.SNAME,'전체') SNAME
+		FROM (
+					SELECT DECODE(T2.GUBUN, NULL, '0', T2.GUBUN) GUBUN
+							,  NVL(T2.SNO,-1) SNO
+						    , SUM(T2.CNT) CNT
+	          		FROM (
+	          					SELECT T1.SNO
+	          							, T1.SNAME
+	          							, T1.GUBUN
+	          							, (SELECT  COUNT(S.GUBUN) FROM URLCLIP U, TBLSCRAP S WHERE U.STYPE = S.STYPE AND U.SNO = S.SNO AND S.USERID = T1.USERID AND S.SNO = T1.SNO) CNT
+	          					FROM TBLSCRAP T1
+	          					WHERE T1.USERID = #{userId}
+	          					AND T1.STYPE = 'M'
+	          					AND T1.GUBUN IN ('1','2','3')
+	          					)T2
+	          		GROUP BY ROLLUP(T2.GUBUN, T2.SNO)
+					HAVING GROUPING_ID(T2.GUBUN, T2.SNO) IN (0, 3)
+				)T3
+		LEFT OUTER JOIN TBLSCRAP T4 ON T4.SNO = T3.SNO
+		ORDER BY T3.GUBUN ASC
+    </select>
+
+    <select id="selectMovieYearCountList" parameterType="hashMap" resultType="egovMap">
+
+		SELECT YEARS YEAR_TEXT
+		FROM (
+					SELECT SUBSTR(SEEDATE,1,4) YEARS
+					FROM URLCLIP U, TBLSCRAP S
+					WHERE U.STYPE = S.STYPE
+					AND U.SNO = S.SNO
+					AND U.SEEDATE IS NOT NULL
+					AND U.SEEDATE != '0000-00-00'
+	          		AND S.USERID = #{userId}
+					AND S.STYPE = 'M'
+					AND S.GUBUN IN ('1','2','3')
+
+					UNION
+
+					SELECT SUBSTR(INDATE,1,4) YEARS
+					FROM URLCLIP U, TBLSCRAP S
+					WHERE U.STYPE = S.STYPE
+					AND U.SNO = S.SNO
+					AND U.SEEDATE='0000-00-00'
+					AND U.INDATE IS NOT NULL
+	          		AND S.USERID = #{userId}
+					AND S.STYPE = 'M'
+					AND S.GUBUN IN ('1','2','3')
+
+				)X
+		ORDER BY YEARS DESC
+    </select>
+
+	<select id="selectMovieMonthCountList" parameterType="hashMap" resultType="egovMap">
+
+		SELECT *
+		FROM (
+					SELECT SUBSTR(SEEDATE,1,4) YEAR_TEXT, SUBSTR(SEEDATE,6,2) MONTH_TEXT
+					FROM URLCLIP U, TBLSCRAP S
+					WHERE U.STYPE = S.STYPE
+					AND U.SNO = S.SNO
+					AND U.SEEDATE IS NOT NULL
+					AND U.SEEDATE != '0000-00-00'
+	          		AND S.USERID = #{userId}
+					AND S.STYPE = 'M'
+					AND S.GUBUN IN ('1','2','3')
+
+					UNION
+
+					SELECT SUBSTR(INDATE,1,4) YEAR_TEXT, SUBSTR(INDATE,6,2) MONTH_TEXT
+					FROM URLCLIP U, TBLSCRAP S
+					WHERE U.STYPE = S.STYPE
+					AND U.SNO = S.SNO
+					AND U.SEEDATE='0000-00-00'
+					AND U.INDATE IS NOT NULL
+	          		AND S.USERID = #{userId}
+					AND S.STYPE = 'M'
+					AND S.GUBUN IN ('1','2','3')
+				)X
+		ORDER BY YEAR_TEXT DESC, MONTH_TEXT ASC
+    </select>
+
+	<select id="selectImageInfo" resultType="egovMap">
+		SELECT TNO
+		         , SUBSTR(TNO, 1, 2) || '/' || SUBSTR(TNO, 3, 2) || '/' || SUBSTR(TNO, 5, 2) IMG_PATH
+		         , FILENAME
+		         , MAIN_JPG
+		  FROM (
+				SELECT LPAD(A.POSTER_NO,8,'0') tno
+						 , A.IMAGE_NM filename
+						 , A.main_jpg
+				  FROM POSTER A
+				        , POSTER_SET B
+				WHERE MOVIE_ID = #{movieIdParam}
+		            AND MOVIE_SEQ = #{movieSeqParam}
+		            AND A.POSTER_ID = B.POSTER_ID
+					AND A.TYPE_CLSS = '2'
+					AND B.USE_CLSS = '1'
+					AND A.MAIN_JPG = 'Y'
+					AND B.OPEN_YN = 'Y'
+					AND A.IMAGE_NM IS NOT NULL
+		)
+    </select>
+
+    <select id="selectActorList" resultType="egovMap">
+		    SELECT PERSON_NM
+				 , MOVIE_ID
+				 , MOVIE_SEQ
+				 , CREDIT_ID
+				 , CREDIT_NM
+				 , STAFF
+				 , CREDIT_SEQ
+				 , PERSON_ID
+				 , KORNM
+				 , ENGNM
+		FROM (
+				   SELECT  A.PERSON_NM
+				   			 , A.MOVIE_ID
+				   			 , A.MOVIE_SEQ
+				   			 , B.CREDIT_ID
+				   			 , B.CREDIT_NM
+				   			 , A.STAFF
+				   			 , A.CREDIT_SEQ
+				   			 , C.PERSON_ID
+				   			 , C.KORNM
+				   			 , C.ENGNM
+          			   FROM CREDIT_MOVIE A
+          			         , CREDIT_MANG B
+          			         , PERSON C
+          			 WHERE A.CREDIT_ID = B.CREDIT_ID(+)
+          			     AND A.PERSON_ID = C.PERSON_ID(+)
+                         AND A.MOVIE_ID = #{movieIdParam}
+                         AND A.MOVIE_SEQ = #{movieSeqParam}
+                         AND B.CREDIT_ID = '005'
+                         AND A.OPEN_YN = 'Y'
+                      ORDER BY A.CREDIT_SEQ
+                                  , C.PERSON_ID ASC
+                                  , A.PERSON_NM
+          )
+
+    </select>
+
+
+    <select id="selectDirectorList" resultType="egovMap">
+		SELECT CREDIT_ID
+				 , PERSON_ID
+				 , PERSON_NM
+		  FROM CREDIT_MOVIE
+		WHERE MOVIE_ID = #{movieIdParam}
+            AND MOVIE_SEQ = #{movieSeqParam}
+          	AND CREDIT_ID IN ('001')
+          	AND OPEN_YN = 'Y'
+         ORDER BY CREDIT_ID, CREDIT_SEQ
+
+    </select>
+
+    <delete id="removeMovieList" parameterType="hashMap">
+    DELETE URLCLIP
+    WHERE USERID = #{userId}
+       AND CLIP_SEQNO IN
+	    <foreach collection="clipSeqnoList" item="item" index="index" separator="," open="(" close=")">
+		#{item.value}
+		</foreach>
+    </delete>
+
+    <select id="selectCategoryCheck" parameterType="hashMap" resultType="int">
+		SELECT COUNT(1) CNT
+		  FROM TBLSCRAP
+		WHERE GUBUN in ('1', '2', '3')
+            AND SNAME = #{sName}
+            AND USERID = #{userId}
+    </select>
+
+	<delete id="removeCategory" parameterType="hashMap">
+    DELETE TBLSCRAP
+     WHERE SNO = #{sno}
+    </delete>
+
+    <update id="updateCategory" parameterType="hashMap">
+    UPDATE TBLSCRAP
+         SET SNAME = #{sName}
+     WHERE SNO = #{sno}
+    </update>
+
+    <update id="updateSeeDate" parameterType="hashMap">
+    UPDATE URLCLIP
+         SET SEEDATE = #{seeDate}
+     WHERE CLIP_SEQNO = #{clipSeqno}
+         AND SNO = #{sno}
+         AND USERID = #{userId}
+    </update>
+
+
+</mapper>

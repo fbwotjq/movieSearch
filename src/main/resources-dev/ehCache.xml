@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ehcache xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="http://ehcache.org/ehcache.xsd"
+         updateCheck="false">
+
+	<diskStore path="java.io.tmpdir"/>
+	<defaultCache
+	maxElementsInMemory="10000"
+	eternal="false"
+	timeToIdleSeconds="600"
+	timeToLiveSeconds="1200"
+	overflowToDisk="false"
+	diskPersistent="false"
+	diskExpiryThreadIntervalSeconds="120"
+	memoryStoreEvictionPolicy="LRU" />
+
+	<cache name="menuListCache"
+	maxElementsInMemory="20"
+	eternal="false"
+	overflowToDisk="false"/>
+
+	<!-- maxElementsInMemory   메모리에 저장될 수 있는 객체의 최대 개수  deprecated
+	external   영구보존 여부
+	overflowToDisk 메모리 객체가 maxElementsInMemory 를 오버시 하드에 저장 여부
+	diskPersistent   재부팅시 디스크에 캐쉬된 객체를 저장할지 여부
+	timeToIdleSeconds 해당 초동안 사용되지 않으면 캐쉬를 제거한다.  기본은 0
+	timeToLiveSeconds 캐쉬의 만료 시간 기본값은 0
+	diskExpiryThreadIntervalSeconds Disk Expiry 쓰레드의 수행시간 간격 기본값 120초
+	memoryStoreEvictionPolicy  객체수가 maxElementsInMemory에 도달시 메모리의 객체 제거 정책,  기본값은 LRU 이며  FIFO 와 LFU도 지정가능 -->
+
+
+</ehcache>

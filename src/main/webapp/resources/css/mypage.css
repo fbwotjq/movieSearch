@@ -1,0 +1,32 @@
+.confirm-mail .btn.weighty{margin-top:30px;width:100%;}
+
+#jsRegister .title{font-size:17px;padding-bottom:15px;border-bottom:1px #333 solid;text-align: center;}
+#jsRegister .iCalendar{margin:20px 0 0;width:100%;}
+
+#jsCategory .list{margin-right:-17px;height:280px;}
+#jsCategory .list .mCSB_inside > .mCSB_container{margin-right:17px;}
+#jsCategory .list li{position:relative;margin-top:20px;padding-right:60px;}
+#jsCategory .list li.add{padding-right:30px;}
+#jsCategory .list li.clone{display:none;}
+#jsCategory .list li input[type="text"]{width:100%;}
+#jsCategory .list li .rt{position:absolute;top:-5px;right:0;}
+#jsCategory .list li .rt a{margin-left:6px;}
+
+.btnNewadd{}
+
+@media all and (min-width:1024px){
+	#jsRegister .title{font-size:28px;padding-bottom:25px;}
+	#jsRegister .iCalendar{font-size:15px;}
+	
+	#jsCategory .list{margin-right:-17px;height:330px;}
+	#jsCategory .list li.add{padding-right:37px;}
+	#jsCategory .list li{padding-right:76px;}
+	#jsCategory .list li input[type="text"]{font-size:15px;}
+}
+
+@media all and (min-width:1280px){
+}
+
+
+@media all and (min-width:1440px){
+}

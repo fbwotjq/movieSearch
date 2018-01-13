@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="egovframework.ag.homepage.member.service.MemberDao">
+	<select id="selectMemberInfoByUserId" parameterType="string" resultType="memberDetails">
+		SELECT USERID
+		      ,PASSWD
+		      ,USERNAME AS NAME
+              ,TO_CHAR(MEMBER.RENEWAL_DATE, 'YYYY-MM-DD') AS RENEWAL_DATE
+              ,TO_CHAR(MEMBER.PASSWORD_DATE, 'YYYY-MM-DD') AS PASSWORD_DATE
+              ,NVL(FOREIGN_YN, 'N') AS FOREIGN
+              ,CELLNO
+		      ,BIRTHDAY AS USERAGE
+		      ,MAILADDR AS MAILADDR
+		      ,SEX
+		      ,SEX_TYPE
+		      /*
+		      ,ZIPCD
+		      ,ADDRESS
+		      ,JOB_CODE
+		      ,DUPINFO
+		      ,CELLNO
+		      ,RECEIVECD
+		      ,AMOUNT
+		      ,USE_STATUS
+		      ,REG_ID
+		      ,REG_DATE
+		      ,MOD_ID
+		      ,MOD_DATE
+		      ,OVERMEMBER
+		      ,TO_CHAR(MEMBER.DROPDATE, 'YYYY-MM-DD') AS DROPDATE
+		      ,DETAIL_ADDRESS
+		      ,FREQUENTLY_SERVICE
+		      ,PREFERENCE_MOVIE
+		      */
+		FROM MEMBER
+		WHERE 1 = 1
+		      AND DROPDATE IS NULL
+		      AND USE_STATUS = 'Y'
+		      AND USERID = #{userId}
+	</select>
+
+	<select id="selectEncryptString" parameterType="string" resultType="string">
+        SELECT damo.hash_str_data(#{password}) FROM DUAL
+	</select>
+
+	<update id="updateLoginDate" parameterType="string">
+		UPDATE MEMBER
+		SET LOGIN_DATE    = CURRENT_DATE
+		WHERE USERID = #{userId}
+	</update>
+
+	<select id="selectMemberInfoByCerti" parameterType="niceCertiVo" resultType="niceCertiVo">
+		SELECT USERID AS RESULT_USER_ID
+		      ,USERNAME AS USER_NAME
+		      ,DUPINFO AS DUP_INFO
+		FROM MEMBER
+		WHERE 1 = 1
+		<if test="userId != null and userId != ''">
+            AND USERID = #{userId}
+		</if>
+		<choose>
+		    <when test="findType.equals('PERSON')">
+                  AND USERNAME = #{userName}
+                  AND DUPINFO = #{dupInfo}
+		    </when>
+		    <otherwise>
+                  AND USERNAME = #{userName}
+                  AND MAILADDR = #{mailAddr}
+		    </otherwise>
+		</choose>
+	</select>
+
+	<update id="updatePasswordInfo" parameterType="changePassVo">
+		UPDATE MEMBER
+		SET PASSWORD_DATE = SYSDATE
+		<choose>
+		    <when test="activeType.equals('LIVE')">
+                ,PASSWD = damo.hash_str_data(#{password})
+		    </when>
+		    <otherwise>
+                ,PASSWD = #{password}
+		    </otherwise>
+		</choose>
+		WHERE USERID = #{userId}
+	</update>
+
+	<select id="selectUserIdDupCount" parameterType="string" resultType="int">
+		SELECT   (SELECT NVL(COUNT(USERID), 0)
+		          FROM MEMBER
+		          WHERE USERID = #{userId})
+		       + (SELECT NVL(COUNT(USERID), 0)
+		          FROM MEMBER_WITHDRAWAL
+		          WHERE USERID = #{userId}) AS ID_DUP_COUNT
+		FROM DUAL
+	</select>
+
+	<select id="selectMypageInfo" parameterType="string" resultType="joinMemberVo">
+		SELECT USERID
+		      ,PASSWD
+		      ,SEX
+              ,ZIPCD
+		      ,ADDRESS
+		      ,DETAIL_ADDRESS
+		      ,RECEIVECD
+		      ,MAILADDR
+      		  ,CELLNO
+		FROM MEMBER
+		WHERE 1 = 1
+		      AND DROPDATE IS NULL
+		      AND USE_STATUS = 'Y'
+		      AND USERID = #{userId}
+	</select>
+
+	<update id="updateMypageInfo" parameterType="changeInfoVo">
+		UPDATE MEMBER
+		SET ZIPCD = #{zipCd}
+			,ADDRESS = #{address}
+			,DETAIL_ADDRESS = #{detailAddress}
+			,CELLNO = #{cellNo}
+			,MAILADDR = #{mailAddr}
+			,RECEIVECD = #{receiveCd}
+		WHERE USERID = #{userId}
+	</update>
+
+	<select id="selectOutUserIdDupCount" parameterType="string" resultType="int">
+		SELECT NVL(COUNT(USERID), 0) FROM MEMBER_WITHDRAWAL
+		WHERE USERID = #{userId}
+	</select>
+
+	<insert id="insertOutMember" parameterType="outMemberVo">
+		INSERT INTO MEMBER_WITHDRAWAL(
+			USERID
+	 		,USERNAME
+	 		,WITHDRAWAL_CATEGORY
+	 		,WITHDRAWAL_REASON
+	 		,WITHDRAWAL_DATE)
+		VALUES(
+			#{userId}
+			,#{userName}
+			,#{withdrawalCategory}
+			,#{withdrawalReason}
+			,SYSDATE)
+	</insert>
+
+	<update id="updateOutMember" parameterType="outMemberVo">
+		UPDATE MEMBER_WITHDRAWAL
+		SET WITHDRAWAL_CATEGORY = #{withdrawalCategory}
+	 		,WITHDRAWAL_REASON = #{withdrawalReason}
+	 		,WITHDRAWAL_DATE = SYSDATE
+		WHERE USERID = #{userId}
+	</update>
+
+	<update id="updateMemberByOut" parameterType="string">
+		UPDATE MEMBER
+		SET DROPDATE = SYSDATE
+	 		,USE_STATUS = 'N'
+		WHERE USERID = #{userId}
+	</update>
+
+	<update id="updateRenew" parameterType="string">
+		UPDATE MEMBER
+		SET RENEWAL_DATE = SYSDATE
+			, MOD_ID = #{userId}
+			, MOD_DATE = TO_CHAR(SYSDATE, 'YYYY-MM-DD')
+		WHERE USERID = #{userId}
+	</update>
+	<update id="updatePasswordDelay" parameterType="string">
+		UPDATE MEMBER
+		SET PASSWORD_DATE = ADD_MONTHS(SYSDATE,-5)
+			, MOD_ID = #{userId}
+			, MOD_DATE = TO_CHAR(SYSDATE, 'YYYY-MM-DD')
+		WHERE USERID = #{userId}
+	</update>
+
+
+</mapper>

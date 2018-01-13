@@ -1,0 +1,819 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="egovframework.ag.homepage.vod.service.VodDao">
+
+	<resultMap id="planMap" type="egovMap">
+        <result property="summaryDesc" column="SUMMARY_DESC" jdbcType="CLOB" javaType="java.lang.String"/>
+        <result property="contentDesc" column="CONTENT_DESC" jdbcType="CLOB" javaType="java.lang.String"/>
+    </resultMap>
+
+	<resultMap id="planMovieMap" type="egovMap">
+        <result property="contentDesc" column="CONTENT_DESC" jdbcType="CLOB" javaType="java.lang.String"/>
+    </resultMap>
+
+    <resultMap id="oldMovieMap" type="egovMap">
+        <result property="casts" column="CASTS" jdbcType="CLOB" javaType="java.lang.String"/>
+        <result property="castsView" column="CASTS_VIEW" jdbcType="CLOB" javaType="java.lang.String"/>
+    </resultMap>
+
+    <resultMap id="vodInfoMap" type="egovMap">
+        <result property="plot" column="PLOT" jdbcType="CLOB" javaType="java.lang.String"/>
+    </resultMap>
+
+	<sql id="countHeaderQuery">
+		SELECT COUNT(1) AS TOTAL_COUNT FROM (
+    </sql>
+
+    <sql id="countTailQuery">
+        )
+    </sql>
+
+    <sql id="pagingHeaderQuery">
+		SELECT * FROM (SELECT ROWNUM AS RNUM, Z.* FROM (
+    </sql>
+
+    <sql id="pagingTailQuery">
+        ) Z WHERE ROWNUM &lt;= #{_page} * #{_pageSize}) WHERE RNUM &gt; (#{_page} - 1) * #{_pageSize}
+    </sql>
+
+	<select id="selectVodMain" parameterType="String" resultType="egovMap">
+	 SELECT *
+        FROM (
+	        SELECT A.MAIN_CONTENT_ID
+	              ,A.CONTENT_TYPE_CD
+	              ,A.UP_MAIN_CONTENT_ID
+	              ,CASE CONTENT_TYPE_CD
+	                   WHEN 'MOVIE' THEN B.TITLE
+	                   WHEN 'VOD_MULTI' THEN B.TITLE
+	                   WHEN 'STORY' THEN C.TITLE
+	                   WHEN 'STORY_HEAD' THEN C.TITLE
+	                   WHEN 'DB_FESTIVAL' THEN D.NAME_KOR
+	                   WHEN 'DB_THEME' THEN E.KEYWORDNAME
+	                   WHEN 'DB_LIST' THEN F.MOVIELIST_NAME
+	                   WHEN 'VOD_PLAN' THEN G.TITLE
+	                   ELSE A.TITLE
+	               END
+	                   AS TITLE
+	              ,CASE CONTENT_TYPE_CD
+	                   WHEN 'DB_LIST' THEN
+	                       (SELECT (SELECT MOVIELIST_NAME
+	                                FROM MOVIELIST
+	                                WHERE MOVIELIST_NO = SUBSTR(X.MOVIELIST_NO, 0, 2))
+	                        FROM MOVIELIST X
+	                        WHERE MOVIELIST_ID = A.KEY1)
+	                   ELSE
+	                       A.SUB_TITLE
+	               END
+	                   AS SUB_TITLE
+	              ,A.CONTENT_DESC
+	              ,A.URL
+	              ,A.SORT_NO
+	              ,A.ACTIVE_YN
+	              ,A.KEY1
+	              ,A.KEY2
+	              ,A.KEY3
+	              ,A.FILE_ALT
+	              ,A.ORG_FILE_NAME
+	              ,A.FILE_NAME
+	              ,B.DIRECTOR AS MOVIE_DIRECTOR
+	              ,B.PROD_YEAR AS MOVEI_PRODYEAR
+	              ,C.WRITER AS STORY_WRITER
+	              ,NVL(H.RUNTIME, 0) AS MULTI_RUN_MIN
+	              ,NVL(H.SECONDS, 0) AS MULTI_RUN_SEC
+	              ,CASE H.MSCREEN_CLSS
+	                   WHEN '1' THEN B.TITLE || ' ' || H.TITLE_ETC || ' 예고편'
+	                   WHEN '2' THEN B.TITLE || ' ' || H.TITLE_ETC
+	               END
+	                   AS MULTI_TITLE
+	        FROM TB_MAIN_CONTENT A
+	             LEFT OUTER JOIN MOVIE_SE B
+	                 ON A.KEY1 = B.MOVIE_ID
+	                    AND A.KEY2 = B.MOVIE_SEQ
+			     LEFT OUTER JOIN (SELECT A.STORY_SEQ
+			                            ,A.TITLE
+			                            ,A.WRITER_SEQ
+			                            ,B.WRITER
+			                      FROM TB_MOVIE_STORY A INNER JOIN TBL_WRITER B ON A.WRITER_SEQ = B.SEQ) C
+			         ON A.KEY1 = TO_CHAR(C.STORY_SEQ)
+	            LEFT OUTER JOIN TBLFESTIVAL D ON A.KEY1 = TO_CHAR(D.FE_NO)
+	            LEFT OUTER JOIN KEYWORD_EXPERT E ON A.KEY1 = TO_CHAR(E.IDX)
+	            LEFT OUTER JOIN MOVIELIST F ON A.KEY1 = TO_CHAR(F.MOVIELIST_ID)
+	            LEFT OUTER JOIN TB_PLAN G ON A.KEY1 = TO_CHAR(G.PLAN_SEQ)
+	            LEFT OUTER JOIN MULTI_NEW H ON A.KEY3 = TO_CHAR(H.MUL_ID)
+        ) A
+        WHERE A.CONTENT_TYPE_CD = #{contentTypeCd}
+	</select>
+
+	<select id="selectVodMainList" parameterType="String" resultType="egovMap">
+	SELECT T2.PLAN_SEQ
+			 , T2.MOVIE_ID
+		     , T2.MOVIE_SEQ
+		     , T2.SORT_NO
+		     , T2.FILE_NAME
+		     , T3.TITLE AS MOVIE_TITLE
+		     , T3.DIRECTOR
+		     , T3.PROD_YEAR
+     FROM  TB_PLAN_REL_MOVIE T2
+	 INNER JOIN MOVIE_SE T3 ON T3.MOVIE_SEQ = T2.MOVIE_SEQ AND T3.MOVIE_ID = T2.MOVIE_ID
+	WHERE T2.PLAN_SEQ = #{planSeq}
+	ORDER BY T2.SORT_NO
+
+	</select>
+
+	<select id="selectVodSearchTextList" resultType="egovMap">
+	SELECT A.SEARCH_TYPE_CD, A.SEARCH_TEXT
+	FROM TB_VOD_SEARCH_TEXT A
+	</select>
+
+	<select id="selectVodMainInfo" parameterType="java.util.HashMap" resultType="egovMap">
+	SELECT IDX
+	         , CATEGORY
+	         , MOVIENM
+	         , DIRECTOR
+	         , REGDATE
+	         , MOVIE_ID
+	         , MOVIE_SEQ
+	         , MOVIEIMG
+	         , MOVIETEXT
+	         , USEYN
+	         , DELYN
+	  FROM TBLVODMAIN
+	 WHERE CATEGORY = #{category}
+	    AND MOVIE_ID = #{movieId}
+	    AND MOVIE_SEQ = #{movieSeq}
+	</select>
+
+	<sql id="selectPlanListQuery">
+
+		SELECT PLAN_SEQ
+			      ,SITE_TYPE_CD
+			      ,TITLE
+			      ,TO_CHAR(TO_DATE(START_DATE),'YYYY-MM-DD') START_DATE_FORMAT
+			      ,TO_CHAR(TO_DATE(END_DATE),'YYYY-MM-DD') END_DATE_FORMAT
+			      ,START_DATE
+			      ,END_DATE
+			      ,FILE_NAME
+			      ,SUMMARY_DESC
+			      ,CONTENT_DESC
+			      ,READ_COUNT
+			      ,ACTIVE_YN
+			      ,CREATE_DATE
+		FROM TB_PLAN
+        WHERE ACTIVE_YN = 'Y'
+            AND SITE_TYPE_CD = #{siteTypeCd}
+
+       <if test="searchText != null and searchText != ''">
+            <choose>
+			    <when test="searchType.equalsIgnoreCase('title')">
+			    AND TITLE LIKE '%' || #{searchText} || '%'
+			    </when>
+			    <when test="searchType.equalsIgnoreCase('contents')">
+			    AND CONTENT_DESC LIKE '%' || #{searchText} || '%'
+			    </when>
+			</choose>
+		</if>
+
+		ORDER BY PLAN_SEQ DESC
+    </sql>
+
+	<select id="selectPlanListCount" parameterType="hashMap" resultType="int">
+        <include refid="countHeaderQuery" />
+        <include refid="selectPlanListQuery"/>
+        <include refid="countTailQuery" />
+    </select>
+
+    <select id="selectPlanPageList" parameterType="hashMap" resultMap="planMap">
+        <include refid="pagingHeaderQuery" />
+        <include refid="selectPlanListQuery"/>
+        <include refid="pagingTailQuery" />
+    </select>
+
+    <select id="selectPlanInfo" parameterType="long" resultMap="planMap">
+		SELECT PLAN_SEQ
+			      ,SITE_TYPE_CD
+			      ,TITLE
+			      ,TO_CHAR(TO_DATE(START_DATE),'YYYY-MM-DD') START_DATE_FORMAT
+			      ,TO_CHAR(TO_DATE(END_DATE),'YYYY-MM-DD') END_DATE_FORMAT
+			      ,START_DATE
+			      ,END_DATE
+			      ,FILE_NAME
+			      ,SUMMARY_DESC
+			      ,CONTENT_DESC
+			      ,READ_COUNT
+			      ,ACTIVE_YN
+			      ,CREATE_DATE
+		FROM TB_PLAN
+	   WHERE PLAN_SEQ = #{planSeq}
+    </select>
+
+    <update id="updatePlanInfoHit" parameterType="long">
+		UPDATE TB_PLAN
+		     SET READ_COUNT = READ_COUNT + 1
+		 WHERE PLAN_SEQ = #{planSeq}
+    </update>
+
+	<select id="selectPlanRelMovieList" parameterType="long" resultMap="planMovieMap">
+		SELECT A.PLAN_SEQ
+			      ,A.SEQ
+			      ,A.MOVIE_ID
+			      ,A.MOVIE_SEQ
+			      ,A.SORT_NO
+			      ,A.CONTENT_DESC
+			      ,A.FILE_ALT
+			      ,A.ORG_FILE_NAME
+			      ,A.FILE_NAME
+			      ,B.TITLE AS MOVIE_TITLE
+			      ,B.DIRECTOR
+			      ,B.PROD_YEAR
+		  FROM TB_PLAN_REL_MOVIE A
+	      INNER JOIN MOVIE_SE B ON A.MOVIE_ID = B.MOVIE_ID  AND A.MOVIE_SEQ = B.MOVIE_SEQ
+		WHERE PLAN_SEQ = #{planSeq}
+		ORDER BY SORT_NO
+    </select>
+
+	<sql id="selectOldMovieListQuery">
+		SELECT A.MUL_ID
+				 , A.FILE_ID
+				 , A.VER_TITLE
+				 , A.ADJUST_DATE
+				 , A.PRICE
+				 , B.RUNTIME
+				 , to_char(to_date(B.RUNTIME*60,'sssss'),'hh24:mi:ss') RUNTIME2
+				 , B.MSCREEN_CLSS
+				 , B.TITLE_ETC
+				 , B.MUL_TITLE
+				 , C.MOVIE_ID
+				 , C.MOVIE_SEQ
+				 , C.TYPE_CLSS
+				 , C.DIRECTOR
+				 , C.KEYWORDS
+				 , C.PROD_YEAR
+				 , C.CASTS
+				 , CASE
+				 	WHEN INSTR(C.CASTS, ',', 1, 3) &gt; 0 THEN SUBSTR(C.CASTS, 1, INSTR(C.CASTS, ',', 1, 3) - 1)
+					ELSE C.CASTS
+				  END CASTS_VIEW
+		  FROM MULTI_FILE A
+			     , MULTI_NEW B
+			     , V_MOVIE_MUL_DETAIL C
+		WHERE A.MUL_ID= B.MUL_ID
+		    AND B.MUL_ID= C.MUL_ID
+		    AND A.USE_CLSS='1'
+		    AND A.OPEN_YN='Y'
+		    AND A.F_SIZE &gt; 0
+		    AND MSCREEN_CLSS='2'
+		    AND B.TITLE_ETC='본편'
+		    AND ( PATTEN_CLSS NOT IN ('2','17','24') OR PATTEN_CLSS IN ('2','13','17','24') )
+
+			<if test="searchText != null and searchText != ''">
+	            <choose>
+				    <when test="searchType.equals('director')">
+				    AND C.DIRECTOR LIKE '%' || #{searchText} || '%'
+				    </when>
+				    <when test="searchType.equals('casts')">
+				    AND C.CASTS LIKE '%' || #{searchText} || '%'
+				    </when>
+				    <when test="searchType.equals('total')">
+				    AND ( C.DIRECTOR LIKE '%' || #{searchText} || '%' OR C.CASTS LIKE '%' || #{searchText} || '%' )
+				    </when>
+				</choose>
+			</if>
+
+			<if test="gubunType != null and gubunType != '' and gubunValue != null and gubunValue != ''">
+	            <choose>
+				    <when test="gubunType.equals('GENRE')">
+				    AND C.TYPE_CLSS LIKE '%' || #{gubunValue} || '%'
+				    </when>
+				    <when test="gubunType.equals('YEAR')">
+				    AND C.PROD_YEAR &gt;= #{gubunValue} AND C.PROD_YEAR &lt; (#{gubunValue} + 10)
+				    </when>
+				    <when test="gubunType.equals('DIRECTOR')">
+				    AND C.DIRECTOR LIKE '%' || #{gubunValue} || '%'
+				    </when>
+				    <when test="gubunType.equals('RESTORE')">
+					AND B.TITLE_SUB LIKE '%' || #{gubunValue} || '%'
+				    </when>
+				</choose>
+			</if>
+
+    </sql>
+
+	<select id="selectOldMovieListCount" parameterType="hashMap" resultType="int">
+        <include refid="countHeaderQuery" />
+        <include refid="selectOldMovieListQuery"/>
+        <include refid="countTailQuery" />
+    </select>
+
+    <select id="selectOldMoviePageList" parameterType="hashMap" resultMap="oldMovieMap">
+        <include refid="pagingHeaderQuery" />
+        <include refid="selectOldMovieListQuery"/>
+        ORDER BY
+
+		<choose>
+		    <when test="orderKey1 == 'title' ">
+                B.MUL_TITLE
+            </when>
+            <when test="orderKey1 == 'hit'">
+                C.HIT_NUM
+            </when>
+            <when test="orderKey1 == 'director'">
+                C.DIRECTOR
+            </when>
+            <when test="orderKey1 == 'year'">
+                C.PROD_YEAR
+            </when>
+		</choose>
+
+		<choose>
+		    <when test="orderKey2 == 'desc' ">
+                DESC
+            </when>
+            <when test="orderKey2 == 'asc'">
+                ASC
+            </when>
+		</choose>
+
+        <include refid="pagingTailQuery" />
+    </select>
+
+	<sql id="selectOldDocuListQuery">
+		SELECT A.MUL_ID
+				 , A.FILE_ID
+				 , A.VER_TITLE
+				 , A.ADJUST_DATE
+				 , A.PRICE
+				 , B.RUNTIME
+				 , to_char(to_date(B.RUNTIME*60,'sssss'),'hh24:mi:ss') RUNTIME2
+				 , B.MSCREEN_CLSS
+				 , B.TITLE_ETC
+				 , B.MUL_TITLE
+				 , C.MOVIE_ID
+				 , C.MOVIE_SEQ
+				 , C.TYPE_CLSS
+				 , C.DIRECTOR
+				 , C.KEYWORDS
+				 , C.PROD_YEAR
+				 , C.CASTS
+				 , CASE
+				 	WHEN INSTR(C.CASTS, ',', 1, 3) &gt; 0 THEN SUBSTR(C.CASTS, 1, INSTR(C.CASTS, ',', 1, 3) - 1)
+					ELSE C.CASTS
+				  END CASTS_VIEW
+		  FROM MULTI_FILE A
+			     , MULTI_NEW B
+			     , V_MOVIE_MUL_DETAIL C
+		WHERE A.MUL_ID= B.MUL_ID
+		    AND B.MUL_ID= C.MUL_ID
+		    AND A.USE_CLSS='1'
+		    AND A.OPEN_YN='Y'
+		    AND A.F_SIZE &gt; 0
+		    AND MSCREEN_CLSS='2'
+		    AND (B.TITLE_ETC='인물다큐' or B.TITLE_ETC='다큐멘터리' or B.TITLE_ETC ='구술영상' )
+
+
+			<if test="searchText != null and searchText != ''">
+	            <choose>
+				    <when test="searchType.equals('director')">
+				    AND C.DIRECTOR LIKE '%' || #{searchText} || '%'
+				    </when>
+				    <when test="searchType.equals('casts')">
+				    AND C.CASTS LIKE '%' || #{searchText} || '%'
+				    </when>
+				    <when test="searchType.equals('total')">
+				    AND ( C.DIRECTOR LIKE '%' || #{searchText} || '%' OR C.CASTS LIKE '%' || #{searchText} || '%' )
+				    </when>
+				</choose>
+			</if>
+
+			<if test="gubunType != null and gubunType != '' and gubunValue != null and gubunValue != ''">
+	            <choose>
+				    <when test="gubunType.equals('GENRE')">
+				    AND C.TYPE_CLSS LIKE '%' || #{gubunValue} || '%'
+				    </when>
+				    <when test="gubunType.equals('YEAR')">
+				    AND C.PROD_YEAR &gt;= #{gubunValue} AND C.PROD_YEAR &lt; (#{gubunValue} + 10)
+				    </when>
+				    <when test="gubunType.equals('DIRECTOR')">
+				    AND C.DIRECTOR LIKE '%' || #{gubunValue} || '%'
+				    </when>
+				</choose>
+			</if>
+
+    </sql>
+
+    <select id="selectOldDocuListCount" parameterType="hashMap" resultType="int">
+        <include refid="countHeaderQuery" />
+        <include refid="selectOldDocuListQuery"/>
+        <include refid="countTailQuery" />
+    </select>
+
+    <select id="selectOldDocuPageList" parameterType="hashMap" resultMap="oldMovieMap">
+        <include refid="pagingHeaderQuery" />
+        <include refid="selectOldDocuListQuery"/>
+        ORDER BY
+
+		<choose>
+		    <when test="orderKey1 == 'title' ">
+                B.MUL_TITLE
+            </when>
+            <when test="orderKey1 == 'hit'">
+                C.HIT_NUM
+            </when>
+            <when test="orderKey1 == 'director'">
+                C.DIRECTOR
+            </when>
+            <when test="orderKey1 == 'year'">
+                C.PROD_YEAR
+            </when>
+		</choose>
+
+		<choose>
+		    <when test="orderKey2 == 'desc' ">
+                DESC
+            </when>
+            <when test="orderKey2 == 'asc'">
+                ASC
+            </when>
+		</choose>
+
+        <include refid="pagingTailQuery" />
+    </select>
+
+
+	<select id="selectVodInfo" parameterType="String" resultMap="vodInfoMap">
+		SELECT MUL_ID
+				 , FILE_ID
+				 , FILE_NO
+				 , MOVIE_ID
+				 , MOVIE_SEQ
+				 , VER_TITLE
+				 , ADJUST_DATE
+				 , TYPE_CLSS
+				 , DIRECTOR
+				 , KEYWORDS
+				 , PROD_YEAR
+				 , RUNTIME
+				 , MSCREEN_CLSS
+				 , TITLE_ETC
+				 , TITLE_SUB
+				 , PRICE
+				 , MUL_TITLE
+				 , MULTOR_NM
+				 , MSCREEN_CLSS_NM
+				 , LEVEL_CLSS_NM
+				 , COLOR_CLSS_NM
+				 , LANGUAGE
+				 , V_SIZE
+				 , H_SIZE
+				 , PLOT
+				 , ROW_NUM
+		FROM (
+					SELECT MUL_ID
+							 , FILE_ID
+							 , FILE_NO
+							 , MOVIE_ID
+							 , MOVIE_SEQ
+							 , VER_TITLE
+							 , ADJUST_DATE
+							 , TYPE_CLSS
+							 , DIRECTOR
+							 , KEYWORDS
+							 , PROD_YEAR
+							 , RUNTIME
+							 , MSCREEN_CLSS
+							 , TITLE_ETC
+							 , TITLE_SUB
+							 , PRICE
+							 , MUL_TITLE
+							 , MULTOR_NM
+							 , MSCREEN_CLSS_NM
+							 , LEVEL_CLSS_NM
+							 , COLOR_CLSS_NM
+							 , LANGUAGE
+							 , V_SIZE
+							 , H_SIZE
+							 , PLOT
+							 , ROWNUM AS ROW_NUM
+					  FROM (
+					  			SELECT A.MUL_ID
+					  					 , A.FILE_ID
+					  					 , A.FILE_NO
+					  					 , A.VER_TITLE
+					  					 , A.ADJUST_DATE
+					  					 , A.PRICE
+					  					 , A.MULTOR_NM
+					  					 , A.V_SIZE
+					  					 , A.H_SIZE
+					  					 , B.RUNTIME
+					  					 , B.MSCREEN_CLSS
+					  					 , B.TITLE_ETC
+					  					 , B.TITLE_SUB
+					  					 , B.MUL_TITLE
+					  					 , B.LANGUAGE
+					  					 , C.MOVIE_ID
+					  					 , C.MOVIE_SEQ
+					  					 , C.TYPE_CLSS
+					  					 , C.DIRECTOR
+					  					 , C.KEYWORDS
+					  					 , C.PROD_YEAR
+					  					 , C.PLOT
+					  					 , (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'A09' AND CODEINFO.CODE = B.MSCREEN_CLSS) MSCREEN_CLSS_NM
+										 , (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'A08' AND CODEINFO.CODE = B.LEVEL_CLSS) LEVEL_CLSS_NM
+										 , (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'B20' AND CODEINFO.CODE = B.COLOR_CLSS) COLOR_CLSS_NM
+								  FROM MULTI_FILE A
+								        , MULTI_NEW B
+								        , V_MOVIE_MUL_DETAIL C
+								WHERE A.MUL_ID = B.MUL_ID
+									AND B.MUL_ID = C.MUL_ID
+									<![CDATA[
+									AND A.USE_CLSS = '6'
+									AND A.OPEN_YN = 'Y'
+									AND A.F_SIZE > 0
+									AND MSCREEN_CLSS = '2'
+									AND B.TITLE_ETC = '본편'
+									AND (
+											PATTEN_CLSS NOT IN ('2','17','24') OR PATTEN_CLSS IN ('2','13','17','24')
+											)
+	  								]]>
+
+									AND C.MOVIE_ID=#{movieId}
+									AND C.MOVIE_SEQ=#{movieSeq}
+									AND (A.M_BPS='1000' OR A.M_BPS='600')
+							  	ORDER BY DBMS_RANDOM.RANDOM
+							  )
+	  				  )
+			WHERE ROW_NUM = 1
+
+	</select>
+
+
+    <update id="updateMultiFile" parameterType="hashMap">
+		UPDATE MULTI_FILE
+		     SET VOD_CNT_M = VOD_CNT_M + 1
+		 WHERE FILE_ID = #{fileId}
+		     AND MUL_ID = #{mulId}
+    </update>
+
+
+    <insert id="insertVodViewLog" parameterType="hashMap">
+		INSERT INTO TBLVODVIEWLOG (MOVIE_ID, MOVIE_SEQ, MSCREEN_CLSS, USERID, REGDATE, MUL_ID, FILE_ID, USE_CLSS)
+		       VALUES (#{movieId}, #{movieSeq}, #{mscreenClss}, #{userId}, SYSDATE, #{mulId}, #{fileId}, '6')
+    </insert>
+
+	<select id="selectVodCompanyPermmision" parameterType="hashMap" resultType="Integer">
+		SELECT SEQ
+		  FROM TBL_VODCOMPANY
+		WHERE ISENABLE='Y'
+		    AND (#{userIp} IN ( ALLOWIP1, ALLOWIP2, ALLOWIP3, ALLOWIP4, ALLOWIP5 ) OR #{userId} IN ( ALLOWID1, ALLOWID2, ALLOWID3, ALLOWID4, ALLOWID5 ) OR #{userIp} BETWEEN ALLOWIPSTART  AND ALLOWIPEND)
+			AND TO_CHAR(SYSDATE,'YYYY-MM-DD') BETWEEN SDATE AND EDATE
+	</select>
+
+	<select id="selectVodBalance" parameterType="hashMap" resultType="Integer">
+		SELECT RESULTPRICE
+		  FROM (
+		  				SELECT RESULTPRICE
+						FROM TBLVODPAYRESULT
+						WHERE PAY_TYPE = '0'
+						AND USERID = #{userId}
+						AND MUL_ID = #{mulId}
+						AND MOVIE_SEQ = #{movieSeq}
+						ORDER BY CREATEDON DESC
+		  			)
+		WHERE ROWNUM=1
+	</select>
+
+	<select id="selectVodBalanceDate" parameterType="hashMap" resultType="egovMap">
+		SELECT RESULTPRICE
+		         , CREATEDON
+		         , SYSDATE -#{strDate} AS COMSYSDATE
+		         , SYSDATE
+		  FROM TBLVODPAYRESULT
+		  WHERE ( CREATEDON  BETWEEN  SYSDATE - #{strDate} AND  SYSDATE)
+		    AND PAY_TYPE IN ('0','2','5')
+			AND USERID = #{userId}
+			AND MUL_ID = #{mulId}
+			AND MOVIE_SEQ = #{movieSeq}
+	</select>
+
+	<select id="selectVodFixChargeTwoWeek" parameterType="hashMap" resultType="egovMap">
+		SELECT RESULTPRICE
+		         , CREATEDON
+		         , SYSDATE -14 AS COMSYSDATE
+		         , SYSDATE
+		  FROM TBLVODPAYRESULT
+		  WHERE ( RESULTPRICE = 5000 AND CREATEDON  BETWEEN  SYSDATE -14 AND  SYSDATE)
+		    AND PAY_TYPE IN ('0','2','1')
+			AND USERID = #{userId}
+	</select>
+
+	<select id="selectVodFixChargeMonth" parameterType="hashMap" resultType="egovMap">
+		SELECT RESULTPRICE
+		         , CREATEDON
+		         , SYSDATE -30 AS COMSYSDATE
+		         , SYSDATE
+		  FROM TBLVODPAYRESULT
+		  WHERE ( (RESULTPRICE = 10000 OR RESULTPRICE=10500) AND CREATEDON  BETWEEN  SYSDATE -30 AND  SYSDATE)
+		    AND PAY_TYPE IN ('0','2','3')
+			AND USERID = #{userId}
+	</select>
+
+	<select id="selectVodPrepaid" parameterType="hashMap" resultType="Long">
+		SELECT ADVENCE_PRICE
+		  FROM (
+					SELECT ( SUM(RESULTPRICE) - NVL ( (
+																		SELECT SUM(RESULTPRICE)
+																			FROM TBLVODPAYRESULT
+																			WHERE USERID = #{userId}
+																			AND PAY_TYPE = '5'
+																			GROUP BY RESULTPRICE )
+																		,0 )
+								) ADVENCE_PRICE
+			 			FROM TBLVODPAYRESULT
+			 			WHERE PAY_TYPE = '4'
+			 			AND USERID = #{userId}
+			 			GROUP BY PAY_TYPE
+			 		)
+	</select>
+
+	<select id="selectVodFreeAll" parameterType="hashMap" resultType="egovMap">
+		SELECT PAYMETHOD
+		  FROM TBLVODPAYRESULT
+		 WHERE (PAYMETHOD='FREE' AND PAY_TYPE='0' )
+		     AND USERID = #{userId}
+	</select>
+
+	<select id="selectVodFreeYear" parameterType="hashMap" resultType="egovMap">
+		<![CDATA[
+		SELECT PAYMETHOD
+		  FROM (
+					SELECT PAYMETHOD
+					  FROM TBLVODPAYRESULT
+					 WHERE USERID = #{userId}
+					AND PAYMETHOD = 'YEAR'
+					AND PAY_TYPE = '0'
+					AND CREATEDON <= CREATEDON + 365
+					)
+		WHERE ROWNUM = 1
+		]]>
+	</select>
+
+	<select id="selectVodCart" parameterType="hashMap" resultType="egovMap">
+		SELECT MOVIE_ID
+		         , MOVIE_SEQ
+		         , MUL_ID
+		         , FILE_ID
+		         , PRICE
+		         , MOVIE_TITLE
+		         , REGDT
+		         , USERID
+		         , SESSION_ID
+		  FROM TBL_ADDCART
+		WHERE MOVIE_ID = #{movieId}
+		    AND MOVIE_SEQ = #{movieSeq}
+		    AND USERID = #{userId}
+	</select>
+
+	<insert id="insertVodCart" parameterType="hashMap">
+		INSERT INTO TBL_ADDCART (MOVIE_ID, MOVIE_SEQ, MUL_ID, FILE_ID, PRICE, MOVIE_TITLE, REGDT, USERID, SESSION_ID)
+		       VALUES (#{movieId}, #{movieSeq}, #{mulId}, #{fileId}, #{price}, #{movieTitle}, SYSDATE, #{userId}, #{sessionId})
+    </insert>
+
+    <select id="selectVodViewDayPass" parameterType="hashMap" resultType="vodPayResutVo">
+		SELECT RESULTPRICE
+		         , CREATEDON
+		         , SYSDATE -1 AS COMSYSDATE
+		         , SYSDATE
+		  FROM TBLVODPAYRESULT
+		WHERE  ( CREATEDON  BETWEEN  SYSDATE -1 AND  SYSDATE)
+		    AND MOVIE_SEQ = #{movieSeq}
+		    AND USERID = #{userId}
+		    AND MUL_ID = #{mulId}
+	</select>
+
+	<select id="selectVodMaxViewCount" parameterType="hashMap" resultType="vodPayResutVo">
+		SELECT PAYSEQ
+		         , RESULTPRICE
+		         , TRUNC(RESULTPRICE / 500) MAXMOVIECNT
+		  FROM (
+		  			SELECT NVL(PAYSEQ,0) AS PAYSEQ
+		  			         , NVL(RESULTPRICE,0) AS RESULTPRICE
+		               FROM TBLVODPAYRESULT
+		              WHERE USERID = #{userId}
+		 				  AND RESULTPRICE > 0
+		 				  AND PAY_TYPE = '4'
+		 			   ORDER BY PAYSEQ DESC
+		  			)
+		  WHERE ROWNUM = 1
+	</select>
+
+	<select id="selectVodViewCount" parameterType="hashMap" resultType="int">
+		SELECT Count(1) VIEWCNT
+		  FROM TBLVODPAYRESULT
+		  WHERE RESULTPRICE > 0
+		      AND PAYMETHOD = 'ADV'
+		      AND PAYSEQ >  #{paySeq}
+		      AND USERID = #{userId}
+	</select>
+
+	<insert id="insertVodViewResult" parameterType="hashMap">
+        <selectKey keyProperty="payseq" resultType="long" order="BEFORE">
+           SELECT NVL(MAX(PaySeq), 0) + 1 FROM TBLVODPAYRESULT
+        </selectKey>
+
+        INSERT INTO TBLVODPAYRESULT(
+        	PAYSEQ,MUL_ID,FILE_ID, MOVIE_ID, MOVIE_SEQ, MOVIE_TITLE, USERID, ITEMNAME
+	      , PAY_TYPE,PAYSUCCESS, PAYMETHOD, RESULTCODE
+	      , RESULTMSG, TID, MOID
+	      , RESULTPRICE, PGAUTHDATE, PGAUTHTIME
+	      , NOHPP, DIRECTBANKCODE, RCASH_RSLT
+	      , RESULTCASHNOAPP1, CARDNUMBER, AUTHCODE
+	      , CARDQUOTA, CARDCODE, CARDISSUERCODE
+	      , CREATEDON, LASTUPDATED, UPDATEDBY
+        )
+        VALUES (
+        	   #{payseq}, #{mulId}, #{fileId}, #{movieId}, #{movieSeq}, #{movieTitle}, #{userId} , '선불제를 이용'
+             , '5','1', 'ADV', '00'
+             , '[선불제를 이용하였습니다]', '', ''
+             , #{price}, '', ''
+             , '', '', ''
+             , '', '', ''
+             , '', '', ''
+             , SYSDATE, SYSDATE, #{userId}
+
+        )
+
+    </insert>
+
+    <select id="selectMovieInfo" parameterType="hashMap" resultType="egovMap">
+
+	SELECT MUL_ID
+			 , FILE_ID
+			 , FILE_NO
+			 , VER_TITLE
+			 , ADJUST_DATE
+			 , PRICE
+			 , MULTOR_NM
+			 , V_SIZE
+			 , H_SIZE
+			 , RUNTIME
+			 , MSCREEN_CLSS
+			 , TITLE_ETC
+			 , TITLE_SUB
+			 , MUL_TITLE
+			 , LANGUAGE
+			 , LEVEL_CLSS
+			 , MSCREEN_CLSS_NM
+			 , LEVEL_CLSS_NM
+			 , COLOR_CLSS_NM
+			 , ROW_NUM
+		FROM (
+					SELECT MUL_ID
+		  					 , FILE_ID
+		  					 , FILE_NO
+		  					 , VER_TITLE
+		  					 , ADJUST_DATE
+		  					 , PRICE
+		  					 , MULTOR_NM
+		  					 , V_SIZE
+		  					 , H_SIZE
+		  					 , RUNTIME
+		  					 , MSCREEN_CLSS
+		  					 , TITLE_ETC
+		  					 , TITLE_SUB
+		  					 , MUL_TITLE
+		  					 , LANGUAGE
+		  					 , LEVEL_CLSS
+		  					 , MSCREEN_CLSS_NM
+							 , LEVEL_CLSS_NM
+							 , COLOR_CLSS_NM
+							 , ROWNUM AS ROW_NUM
+					  FROM (
+					  			SELECT A.MUL_ID
+					  					 , A.FILE_ID
+					  					 , A.FILE_NO
+					  					 , A.VER_TITLE
+					  					 , A.ADJUST_DATE
+					  					 , A.PRICE
+					  					 , A.MULTOR_NM
+					  					 , A.V_SIZE
+					  					 , A.H_SIZE
+					  					 , B.RUNTIME
+					  					 , B.MSCREEN_CLSS
+					  					 , B.TITLE_ETC
+					  					 , B.TITLE_SUB
+					  					 , B.MUL_TITLE
+					  					 , B.LANGUAGE
+					  					 , B.LEVEL_CLSS
+					  					 , (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'A09' AND CODEINFO.CODE = B.MSCREEN_CLSS) MSCREEN_CLSS_NM
+										 , (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'A08' AND CODEINFO.CODE = B.LEVEL_CLSS) LEVEL_CLSS_NM
+										 , (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'B20' AND CODEINFO.CODE = B.COLOR_CLSS) COLOR_CLSS_NM
+								  FROM MULTI_FILE A
+								        , MULTI_NEW B
+								WHERE A.MUL_ID = B.MUL_ID
+									    AND A.MULTOR_NM=#{fileNm}
+							  	ORDER BY DBMS_RANDOM.RANDOM
+							  )
+	  				  )
+			WHERE ROW_NUM = 1
+	</select>
+
+</mapper>

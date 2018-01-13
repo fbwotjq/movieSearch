@@ -1,0 +1,1060 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="egovframework.ag.homepage.db.service.DbDao">
+
+	<resultMap id="keyWordMap" type="egovMap">
+	  <collection property="keyWordSubList" column="idx" ofType="egovMap" select="selectKeywordMovieList"/>
+	</resultMap>
+
+	<resultMap id="keyWordSubMap" type="egovMap">
+		<association property="imageInfo" column="{movieIdParam=MOVIE_ID_PARAM,movieSeqParam=MOVIE_SEQ_PARAM}"  javaType="map"  select="selectImageInfo"/>
+		<collection property="actorList" column="{movieIdParam=MOVIE_ID_PARAM,movieSeqParam=MOVIE_SEQ_PARAM}" javaType="java.util.ArrayList" ofType="egovMap" select="selectActorList"/>
+		<collection property="directorList" column="{movieIdParam=MOVIE_ID_PARAM,movieSeqParam=MOVIE_SEQ_PARAM}" javaType="java.util.ArrayList" ofType="egovMap" select="selectDirectorList"/>
+	</resultMap>
+
+	<resultMap id="festivalMap" type="egovMap">
+		<association property="festImg" column="{feNoParam=FE_NO_PARAM}"  javaType="String"  select="selectFestivalImg"/>
+	</resultMap>
+
+	<resultMap id="festivalYearMap" type="egovMap">
+		<result  property="feNo" column="FE_NO"  javaType="String"  />
+		<result  property="feNoParam" column="FE_NO_PARAM"  javaType="String"  />
+		<result  property="fedYear" column="FED_YEAR"  javaType="String"  />
+		<result  property="fedYearParam" column="FED_YEAR_PARAM"  javaType="String"  />
+		<result  property="nextFedYear" column="NEXT_FED_YEAR"  javaType="String"  />
+		<result  property="prevFedYear" column="PREV_FED_YEAR"  javaType="String"  />
+		<collection property="subList" column="{feNoParam=FE_NO_PARAM,fedYearParam=FED_YEAR_PARAM}" javaType="java.util.ArrayList" ofType="egovMap" select="selectFestivalAwardYearSubList"/>
+	</resultMap>
+
+	<resultMap id="dbDetailMap" type="egovMap">
+        <result property="contentDesc" column="CONTENT_DESC" javaType="java.lang.String" jdbcType="CLOB"/>
+        <result property="explainContent" column="EXPLAIN_CONTENT" javaType="java.lang.String" jdbcType="CLOB"/>
+    </resultMap>
+
+
+    <resultMap type="dbMainKeywordVo" id="mainKeywordMap">
+        <id property="mainContentId" column="MAIN_CONTENT_ID"/>
+        <result property="contentTypeCd" column="CONTENT_TYPE_CD"/>
+        <result property="title" column="TITLE"/>
+        <result property="url" column="URL"/>
+        <result property="fileAlt" column="FILE_ALT"/>
+        <result property="orgFileName" column="ORG_FILE_NAME"/>
+        <result property="fileName" column="FILE_NAME"/>
+
+		<collection property="tagList" ofType="mainContentVo">
+			<id property="mainContentId" column="TAG_MAIN_CONTENT_ID"/>
+			<result property="upMainContentId" column="TAG_UP_MAIN_CONTENT_ID"/>
+			<result  property="title" column="TAG_TITLE"/>
+			<result property="url" column="TAG_URL"/>
+		</collection>
+    </resultMap>
+
+    <resultMap type="dbMainFestivalVo" id="mainFestivalMap">
+        <id property="mainContentId" column="MAIN_CONTENT_ID"/>
+        <result property="contentTypeCd" column="CONTENT_TYPE_CD"/>
+        <result property="fileAlt" column="FILE_ALT"/>
+        <result property="orgFileName" column="ORG_FILE_NAME"/>
+        <result property="fileName" column="FILE_NAME"/>
+        <result property="festivalName" column="FESTIVAL_NAME"/>
+        <result property="feNo" column="FE_NO"/>
+        <result property="fedNo" column="FED_NO"/>
+        <result property="fedYear" column="FED_YEAR"/>
+
+        <collection property="awordList" ofType="dbMainFestivalAwordVo">
+            <id property="feaAword" column="FEA_AWORD"/>
+            <id property="feaMovie" column="FEA_MOVIE"/>
+        </collection>
+    </resultMap>
+
+    <resultMap type="dbMainThemeVo" id="mainThemeMap">
+        <id property="mainContentId" column="MAIN_CONTENT_ID"/>
+        <result property="contentTypeCd" column="CONTENT_TYPE_CD"/>
+        <result property="idx" column="IDX"/>
+        <result property="keywordname" column="KEYWORDNAME"/>
+        <result property="filenm" column="FILENM"/>
+
+        <collection property="movieList" ofType="dbMainThemeMovieVo">
+            <id property="movieId" column="MOVIE_ID"/>
+            <id property="movieSeq" column="MOVIE_SEQ"/>
+            <result property="title" column="TITLE"/>
+            <result property="prodYear" column="PROD_YEAR"/>
+            <result property="director" column="DIRECTOR"/>
+            <result property="filename" column="FILENAME"/>
+            <result property="tno" column="TNO"/>
+        </collection>
+    </resultMap>
+
+
+	<sql id="countHeaderQuery">
+		SELECT COUNT(1) AS TOTAL_COUNT FROM (
+    </sql>
+
+    <sql id="countTailQuery">
+        )
+    </sql>
+
+    <sql id="pagingHeaderQuery">
+		SELECT * FROM (SELECT ROWNUM AS RNUM, Z.* FROM (
+    </sql>
+
+    <sql id="pagingTailQuery">
+        ) Z WHERE ROWNUM &lt;= #{_page} * #{_pageSize}) WHERE RNUM &gt; (#{_page} - 1) * #{_pageSize}
+    </sql>
+
+
+	<sql id="selectKeywordListQuery">
+
+		SELECT A.IDX
+			     , A.IDX MAIN_IDX
+			     , A.KEYWORDNAME
+			     , A.WRITER
+			     , A.REGDATE
+			     , A.VIEWYN
+			     , A.KEYWORDREF
+			     , A.FILENM
+			     , A.FILEALT
+			     , CASE  WHEN TO_CHAR(SYSDATE - 7,'YYYYMMDD') - TO_CHAR(A.REGDATE,'YYYYMMDD') &lt; 1
+							THEN 'Y' ELSE 'N'
+				   END NEW_YN
+			     , B.MOVIECNT
+		FROM KEYWORD_EXPERT A
+		    ,(SELECT KEYWORDREF, COUNT(1) AS MOVIECNT
+		      FROM KEYWORD_EXPERT_DETAIL
+		      GROUP BY KEYWORDREF) B
+		WHERE A.KEYWORDREF = B.KEYWORDREF
+            AND A.VIEWYN = 'Y'
+
+    </sql>
+
+	<select id="selectKeywordListCount" parameterType="hashMap" resultType="int">
+        <include refid="countHeaderQuery" />
+        <include refid="selectKeywordListQuery"/>
+        <include refid="countTailQuery" />
+    </select>
+
+    <select id="selectKeywordPageList" parameterType="hashMap" resultMap="keyWordMap">
+        <include refid="pagingHeaderQuery" />
+        <include refid="selectKeywordListQuery"/>
+         ORDER BY
+        <if test="_sortKey != null and _sortKey != ''">
+            ${_sortKey} ${_sortWord},
+        </if>
+        A.IDX DESC
+        <include refid="pagingTailQuery" />
+    </select>
+
+	<select id="selectKeywordMovieList" resultType="egovMap">
+		SELECT IDX
+	      		 , KEYWORDREF
+	             , REGDATE
+         		 , DETAIL_IDX
+		         , MOVIE_ID
+		         , MOVIE_SEQ
+	      		 , TITLE
+	      		 , PROD_YEAR
+	      		 , TITLE2
+		FROM
+		 (
+		    SELECT A.IDX
+		      		 , A.KEYWORDREF
+		             , A.REGDATE
+          			 , B.IDX DETAIL_IDX
+		             , B.MOVIE_ID
+		             , B.MOVIE_SEQ
+		      		 , C.TITLE
+		      		 , C.PROD_YEAR
+		      		 , C.TITLE || '(' || C.PROD_YEAR || ')' AS TITLE2
+			  FROM KEYWORD_EXPERT A
+    		  INNER JOIN KEYWORD_EXPERT_DETAIL B ON A.IDX = #{idx} AND B.KEYWORDREF = A.KEYWORDREF
+    		  INNER JOIN MOVIE_SE C ON C.MOVIE_ID = B.MOVIE_ID AND C.MOVIE_SEQ = B.MOVIE_SEQ
+             ORDER BY A.REGDATE DESC
+		)
+		WHERE ROWNUM BETWEEN 1 AND 8
+    </select>
+
+    <select id="selectKeywordPreNext" resultType="egovMap">
+		SELECT T1.*
+		         , T2.MOVIECNT
+		FROM
+		 (
+		    SELECT IDX
+		             , KEYWORDREF
+		    		 , KEYWORDNAME
+		    		 , REGDATE
+		    		 , LEAD(KEYWORDNAME,1,'') OVER(ORDER BY REGDATE) NEXT_KEYWORDNAME
+		    		 , LEAD(IDX,1,-1) OVER(ORDER BY REGDATE) NEXT_IDX
+		    		 , LEAD(REGDATE,1) OVER(ORDER BY REGDATE) NEXT_REG_DATE
+		    		 , Lag(KEYWORDNAME,1,'이전글') OVER(ORDER BY REGDATE) PREV_KEYWORDNAME
+		    		 , Lag(IDX,1,-1) OVER(ORDER BY REGDATE) PREV_IDX
+		    		 , Lag(REGDATE,1) OVER(ORDER BY REGDATE) PREV_REG_DATE
+			  FROM KEYWORD_EXPERT
+    		WHERE VIEWYN = 'Y'
+		) T1
+		  ,(SELECT KEYWORDREF, COUNT(1) AS MOVIECNT
+		      FROM KEYWORD_EXPERT_DETAIL
+		      GROUP BY KEYWORDREF) T2
+		WHERE T1.IDX = #{idx}
+		    AND T1.KEYWORDREF = T2.KEYWORDREF
+
+    </select>
+
+	<sql id="selectKeywordSubListQuery">
+
+		SELECT C.MOVIE_ID
+				 , C.MOVIE_SEQ
+				 , C.MOVIE_ID MOVIE_ID_PARAM
+				 , C.MOVIE_SEQ MOVIE_SEQ_PARAM
+				 , C.TITLE
+				 , C.TYPE_CLSS
+				 , C.DIRECTOR
+				 , C.NATION_CLSS
+				 , C.PROD_YEAR
+				 , C.PATTEN_CLSS
+				 , C.RUNTIME
+				 , C.RELEASE_DATE
+				 , C.LEVEL_CLSS
+				 , C.NATIONAL_CLSS
+				 , C.TITLE_ENG
+				 , B.MEMO
+				 , (
+				 SELECT  count(*)
+				   FROM MULTI_NEW S_A , MULTI_MOVIE_REL S_B , MULTI_FILE S_C,
+				        ( SELECT CODE , CODE_NM FROM CODEINFO WHERE DIV_ID = 'A09') SCREEN,
+				        ( SELECT CODE , CODE_NM FROM CODEINFO WHERE DIV_ID = 'A08') LEVELNM
+				  WHERE S_A.MSCREEN_CLSS = SCREEN.CODE(+)
+				    AND S_A.LEVEL_CLSS = LEVELNM.CODE(+)
+				    AND S_A.MUL_ID = S_B.MUL_ID
+				    AND S_A.MUL_ID = S_C.MUL_ID
+				    AND S_C.USE_CLSS = '1'
+				    AND S_C.OPEN_YN = 'Y'
+				    AND S_C.F_SIZE > 0
+				    AND SCREEN.CODE_NM = '본편'
+				    AND S_B.MOVIE_ID = B.MOVIE_ID
+				    AND S_B.MOVIE_SEQ = B.MOVIE_SEQ
+		    		) CNT
+		  FROM KEYWORD_EXPERT A
+   		  INNER JOIN KEYWORD_EXPERT_DETAIL B ON A.IDX = #{idx} AND B.KEYWORDREF = A.KEYWORDREF AND B.STATUS = 'Y'
+   		  INNER JOIN MOVIE_SE C ON C.MOVIE_ID = B.MOVIE_ID AND C.MOVIE_SEQ = B.MOVIE_SEQ
+         WHERE C.TITLE IS NOT NULL
+		<if test="searchType != null and searchType != ''">
+			<choose>
+			    <when test="searchType.equalsIgnoreCase('K')">
+			    AND C.NATIONAL_CLSS = 'K'
+			    </when>
+			    <otherwise>
+			    AND C.NATIONAL_CLSS != 'K'
+			    </otherwise>
+			</choose>
+        </if>
+        <if test="searchText != null and searchText != ''">
+        	AND C.TITLE LIKE '%' || #{searchText} || '%'
+        </if>
+
+    </sql>
+
+	<select id="selectKeywordSubListCount" parameterType="hashMap" resultType="int">
+        <include refid="countHeaderQuery" />
+        <include refid="selectKeywordSubListQuery"/>
+        <include refid="countTailQuery" />
+    </select>
+
+    <select id="selectKeywordSubPageList" parameterType="hashMap" resultMap="keyWordSubMap">
+        <include refid="pagingHeaderQuery" />
+        <include refid="selectKeywordSubListQuery"/>
+         ORDER BY
+        <if test="_sortKey != null and _sortKey != ''">
+            ${_sortKey} ${_sortWord},
+        </if>
+        A.REGDATE DESC
+        <include refid="pagingTailQuery" />
+    </select>
+
+    <select id="selectActorList" resultType="egovMap">
+		SELECT PERSON_NM
+				 , CREDIT_ID
+				 , CREDIT_NM
+				 , STAFF
+				 , CREDIT_SEQ
+				 , PERSON_ID
+				 , KORNM
+				 , ENGNM
+		FROM (
+				   SELECT  A.PERSON_NM
+				   			 , B.CREDIT_ID
+				   			 , B.CREDIT_NM
+				   			 , A.STAFF
+				   			 , A.CREDIT_SEQ
+				   			 , C.PERSON_ID
+				   			 , C.KORNM
+				   			 , C.ENGNM
+          			   FROM CREDIT_MOVIE A
+          			         , CREDIT_MANG B
+          			         , PERSON C
+          			 WHERE A.CREDIT_ID = B.CREDIT_ID(+)
+          			     AND A.PERSON_ID = C.PERSON_ID(+)
+                         AND A.MOVIE_ID = #{movieIdParam}
+                         AND A.MOVIE_SEQ = #{movieSeqParam}
+                         AND B.CREDIT_ID = '005'
+                         AND A.OPEN_YN = 'Y'
+                      ORDER BY A.CREDIT_SEQ
+                                  , C.PERSON_ID ASC
+                                  , A.PERSON_NM
+          )
+    </select>
+
+
+    <select id="selectDirectorList" resultType="egovMap">
+
+		SELECT CREDIT_ID
+				 , PERSON_ID
+				 , PERSON_NM
+		  FROM CREDIT_MOVIE
+		WHERE MOVIE_ID = #{movieIdParam}
+            AND MOVIE_SEQ = #{movieSeqParam}
+          	AND CREDIT_ID IN ('001')
+          	AND OPEN_YN = 'Y'
+         ORDER BY CREDIT_ID, CREDIT_SEQ
+
+    </select>
+    <select id="selectImageInfo" resultType="egovMap">
+		SELECT TNO
+		         , SUBSTR(TNO, 1, 2) || '/' || SUBSTR(TNO, 3, 2) || '/' || SUBSTR(TNO, 5, 2) IMG_PATH
+		         , FILENAME
+		         , MAIN_JPG
+		  FROM (
+				SELECT LPAD(A.POSTER_NO,8,'0') tno
+						 , A.IMAGE_NM filename
+						 , A.main_jpg
+				  FROM POSTER A
+				        , POSTER_SET B
+				WHERE MOVIE_ID = #{movieIdParam}
+		            AND MOVIE_SEQ = #{movieSeqParam}
+		            AND A.POSTER_ID = B.POSTER_ID
+					AND A.TYPE_CLSS = '2'
+					AND B.USE_CLSS = '1'
+					AND A.MAIN_JPG = 'Y'
+					AND B.OPEN_YN = 'Y'
+					AND A.IMAGE_NM IS NOT NULL
+		)
+    </select>
+
+
+	<sql id="selectMovieListQuery">
+
+		SELECT A.MOVIE_ID
+		         , A.MOVIE_SEQ
+		         , A.MOVIE_ID MOVIE_ID_PARAM
+		         , A.MOVIE_SEQ MOVIE_SEQ_PARAM
+		         , A.TITLE
+		         , A.TITLE_ENG
+		         , A.TYPE_CLSS
+		         , A.DIRECTOR
+		         , A.NATION_CLSS
+		         , A.PROD_YEAR
+		         , A.PATTEN_CLSS
+		         , A.RUNTIME
+		         , A.RELEASE_DATE
+		         , A.LEVEL_CLSS
+		         , A.NATIONAL_CLSS
+				 , (
+				 SELECT  count(*)
+				   FROM MULTI_NEW S_A , MULTI_MOVIE_REL S_B , MULTI_FILE S_C,
+				        ( SELECT CODE , CODE_NM FROM CODEINFO WHERE DIV_ID = 'A09') SCREEN,
+				        ( SELECT CODE , CODE_NM FROM CODEINFO WHERE DIV_ID = 'A08') LEVELNM
+				  WHERE S_A.MSCREEN_CLSS = SCREEN.CODE(+)
+				    AND S_A.LEVEL_CLSS = LEVELNM.CODE(+)
+				    AND S_A.MUL_ID = S_B.MUL_ID
+				    AND S_A.MUL_ID = S_C.MUL_ID
+				    AND S_C.USE_CLSS = '1'
+				    AND S_C.OPEN_YN = 'Y'
+				    AND S_C.F_SIZE > 0
+				    AND SCREEN.CODE_NM = '본편'
+				    AND S_B.MOVIE_ID = A.MOVIE_ID
+				    AND S_B.MOVIE_SEQ = A.MOVIE_SEQ
+		    		) CNT
+
+		  FROM MOVIE_SE A
+		WHERE A.TITLE IS NOT NULL
+		<if test="searchType != null and searchType != ''">
+			<choose>
+			    <when test="searchType.equalsIgnoreCase('K')">
+			    AND A.NATIONAL_CLSS = 'K'
+			    </when>
+			    <otherwise>
+			    AND A.NATIONAL_CLSS != 'K'
+			    </otherwise>
+			</choose>
+        </if>
+        <if test="searchText != null and searchText != ''">
+        	AND A.TITLE LIKE '%' || #{searchText} || '%'
+        </if>
+
+    </sql>
+
+	<select id="selectMovieListCount" parameterType="hashMap" resultType="int">
+        <include refid="countHeaderQuery" />
+        <include refid="selectMovieListQuery"/>
+        <include refid="countTailQuery" />
+    </select>
+
+    <select id="selectMoviePageList" parameterType="hashMap" resultMap="keyWordSubMap">
+        <include refid="pagingHeaderQuery" />
+        <include refid="selectMovieListQuery"/>
+         ORDER BY NVL(A.PROD_YEAR,'0000') DESC
+					 , NVL(A.RELEASE_DATE,'0000') DESC
+					 , A.TITLE ASC
+        <include refid="pagingTailQuery" />
+    </select>
+
+    <select id="selectKeywordCount" parameterType="hashMap" resultType="int">
+        SELECT COUNT(1)
+          FROM KEYWORD_EXPERT_DETAIL
+		WHERE MOVIE_ID = #{movieId}
+		    AND MOVIE_SEQ = #{movieSeq}
+		    AND KEYWORDREF = #{keywordRef}
+    </select>
+
+    <insert id="insertKeywordProc" parameterType="hashMap">
+        <selectKey keyProperty="idx" resultType="long" order="BEFORE">
+           SELECT NVL(MAX(IDX), 0) + 1 FROM KEYWORD_EXPERT_DETAIL
+        </selectKey>
+
+        INSERT INTO KEYWORD_EXPERT_DETAIL(
+        	IDX, KEYWORDREF, MOVIE_ID, MOVIE_SEQ, USERID
+	      , USERNAME, STATUS, APPRO_REASON, REGDATE, NATIONAL_CLSS
+	      , MEMO
+        )
+        VALUES (
+			#{idx}, #{keywordRef}, #{movieId}, #{movieSeq}, #{userId}
+          , #{userName}, 'R', '', SYSDATE, #{nationalClss}
+          , #{memo}
+        )
+
+    </insert>
+
+
+	<sql id="selectFestivalListQuery">
+
+	SELECT FE_NO
+	         , FE_NO FE_NO_PARAM
+	         , NAME_KOR
+	         , NAME_ENG
+	         , MONTH
+	         , CATEGORY
+	         , COUNTRY
+	         , HOMEPAGE
+	         , IMAGE
+	         , UPDATE_YN
+	         , INTRODUCE
+	         , (SELECT MAX(FED_NO) FROM TBLFESTIVALDETAIL WHERE TBLFESTIVALDETAIL.FE_NO=TBLFESTIVAL.FE_NO) AS MAXFEDNO
+	         , (SELECT MIN(FED_YEAR) FROM TBLFESTIVALDETAIL WHERE TBLFESTIVALDETAIL.FE_NO=TBLFESTIVAL.FE_NO) AS MINFEDYEAR
+	  FROM TBLFESTIVAL
+	 WHERE COUNTRY='대한민국'
+	     AND OPEN_YN = 'Y'
+
+	</sql>
+	<select id="selectFestivalListCount" parameterType="hashMap" resultType="int">
+        <include refid="countHeaderQuery" />
+        <include refid="selectFestivalListQuery"/>
+        <include refid="countTailQuery" />
+    </select>
+
+    <select id="selectFestivalPageList" parameterType="hashMap" resultMap="festivalMap">
+        <include refid="pagingHeaderQuery" />
+        <include refid="selectFestivalListQuery"/>
+	 	ORDER BY MONTH DESC
+        <include refid="pagingTailQuery" />
+    </select>
+
+    <select id="selectFestivalImg"  resultType="String">
+         SELECT IMAGE_NM
+		     FROM (
+		     			SELECT ROWNUM RNUM, DATA.IMAGE_NM
+		                	FROM (
+		                				SELECT IMAGE_NM FROM TBLFESTIVALDETAIL
+		  								 WHERE FE_NO = #{feNoParam}
+		  							 	  ORDER BY IMAGE_NM DESC NULLS LAST
+		  							 ) DATA
+		  				)
+		     WHERE RNUM = 1
+    </select>
+
+	<select id="selectFestivalInfo" parameterType="hashMap" resultMap="festivalMap">
+		<include refid="selectFestivalListQuery"/>
+		 AND FE_NO = #{feNo}
+    </select>
+
+	<sql id="selectFestivalPosterListQuery">
+
+	SELECT FE_NO
+	         , FED_NO
+	         , IMAGE_NM
+	         , FED_YEAR
+	         , FED_TIME
+	  FROM TBLFESTIVALDETAIL
+	 WHERE FE_NO = #{feNo}
+
+	</sql>
+	<select id="selectFestivalPosterPageListCount" parameterType="hashMap" resultType="int">
+        <include refid="countHeaderQuery" />
+        <include refid="selectFestivalPosterListQuery"/>
+        <include refid="countTailQuery" />
+    </select>
+
+    <select id="selectFestivalPosterPageList" parameterType="hashMap" resultType="egovMap">
+        <include refid="pagingHeaderQuery" />
+        <include refid="selectFestivalPosterListQuery"/>
+		ORDER BY FED_YEAR ASC
+        <include refid="pagingTailQuery" />
+    </select>
+
+	<select id="selectFestivalAwardList" parameterType="hashMap" resultType="egovMap">
+        SELECT  D.FE_NO
+                  , D.FED_NO
+                  , D.FED_YEAR
+                  , D.FED_TIME
+                  , A.FEA_AWORD
+                  , A.FEA_MOVIE
+                  , A.FEA_OFFICAL
+                  , A.FEA_MOVIECODE
+                  , A.FEA_COUNTRY
+                  , B.F_PERS_NAME
+                  , B.F_PERS_ID
+                  , A.FEA_YEAR
+          FROM  TBLFESTIVALDETAIL D
+                  , TBLFESTIVALAWORD A
+                  , TBLFESTIVAL_PERS_REL B
+        WHERE  D.FED_NO = A.FED_NO
+            AND  A.F_AWARD_ID=B.F_AWARD_ID(+)
+			AND  D.FE_NO = #{feNo}
+			AND  D.FED_NO = #{fedNo}
+		ORDER BY A.SORT_SEQ
+    </select>
+
+	<select id="selectFestivalAwardYearList" parameterType="hashMap" resultMap="festivalYearMap">
+        <!-- 년대 검색쿼리
+        SELECT T1.*, T2.FED_NO
+          	FROM (
+                      SELECT FED_YEAR_S || '0' AS FED_YEAR
+		                         , FED_YEAR_S AS FED_YEAR_PARAM
+		                         , FE_NO AS FE_NO_PARAM
+		                         , FE_NO
+		                 FROM (
+		                      SELECT FE_NO
+		                               , FLOOR(FED_YEAR / 10) FED_YEAR_S
+		                          FROM TBLFESTIVALDETAIL
+		                         WHERE FE_NO = #{feNo}
+		                       )
+		                  GROUP BY FE_NO, FED_YEAR_S
+		            )T1
+            LEFT OUTER JOIN TBLFESTIVALDETAIL T2 ON T1.FE_NO = T2.FE_NO AND T1.FED_YEAR_PARAM = FLOOR(T2.FED_YEAR / 10) AND T1.FE_NO = #{feNo} AND T2.FED_NO = #{fedNo}
+
+          ORDER BY T1.FED_YEAR ASC
+-->
+          <!-- 이전, 다음 년대 검색쿼리-->
+          SELECT T1.*
+                   , T2.FED_NO
+          	FROM (
+			  		  SELECT FE_NO
+			                   , FE_NO FE_NO_PARAM
+			                   , FED_YEAR
+			                   , FED_YEAR_PARAM
+					    	   , LEAD(FED_YEAR,1,-1)  OVER(ORDER BY FED_YEAR) NEXT_FED_YEAR
+					    	   , LAG(FED_YEAR,1,-1) OVER(ORDER BY FED_YEAR) PREV_FED_YEAR
+					    FROM
+						        (
+						        SELECT FED_YEAR_S || '0' AS FED_YEAR
+						                 , FED_YEAR_S AS FED_YEAR_PARAM
+						                 , FE_NO
+						         FROM (
+						         			SELECT FE_NO
+						         			         , FLOOR(FED_YEAR / 10) FED_YEAR_S
+						          			  FROM TBLFESTIVALDETAIL
+						          			 WHERE FE_NO =  #{feNo}
+						          		 )
+						          GROUP BY FE_NO, FED_YEAR_S
+						        )
+		            )T1
+            LEFT OUTER JOIN TBLFESTIVALDETAIL T2 ON T1.FE_NO = T2.FE_NO AND T1.FED_YEAR_PARAM = FLOOR(T2.FED_YEAR / 10) AND T1.FE_NO = #{feNo} AND T2.FED_NO = #{fedNo}
+
+    </select>
+
+    <select id="selectFestivalAwardYearSubList" resultType="egovMap">
+        SELECT FE_NO
+         		 , FED_NO
+                 , FED_YEAR
+         FROM (
+         			SELECT  FE_NO
+         			          , FED_NO
+                              , FED_YEAR
+                              , FLOOR(FED_YEAR / 10) FED_YEAR_S
+			          FROM  TBLFESTIVALDETAIL
+			         WHERE FE_NO = #{feNoParam}
+          		 )
+       WHERE FED_YEAR_S = #{fedYearParam}
+       ORDER BY FED_YEAR ASC
+    </select>
+
+	<select id="selectFestivalOwnImgList" parameterType="hashMap" resultType="egovMap">
+        SELECT  D.FE_NO
+                  , D.FED_NO
+                  , D.FED_YEAR
+                  , D.FED_TIME
+                  , A.FEA_AWORD
+                  , A.FEA_MOVIE
+                  , A.FEA_OFFICAL
+                  , A.FEA_MOVIECODE
+                  , A.FEA_COUNTRY
+                  , B.F_PERS_NAME
+                  , B.F_PERS_ID
+                  , A.FEA_YEAR
+          FROM  TBLFESTIVALDETAIL D
+                  , TBLFESTIVALAWORD A
+                  , TBLFESTIVAL_PERS_REL B
+        WHERE  D.FED_NO = A.FED_NO
+            AND  A.F_AWARD_ID=B.F_AWARD_ID(+)
+			AND  D.FE_NO = #{feNo}
+			AND  D.FED_NO = #{fedNo}
+		ORDER BY A.SORT_SEQ
+    </select>
+
+
+	<select id="selectDbList" parameterType="hashMap" resultType="egovMap">
+         SELECT  CASE   WHEN SUBSTR(MOVIELIST_NO,1,2) =10 THEN '001'  else SUBSTR(MOVIELIST_NO,1,2) end as gubun, web_seq, MOVIELIST_ID, MOVIELIST_NO, MOVIELIST_NAME, MOVIELIST_DEPTH
+         	FROM MOVIELIST
+         WHERE actYn='Y'
+         	AND MOVIELIST_DEPTH IN (1,2) ORDER BY GUBUN, MOVIELIST_DEPTH, WEB_SEQ
+    </select>
+
+    <select id="selectUserDbViewList" parameterType="hashMap" resultType="egovMap">
+        SELECT A.MOVIELIST_ID, A.MOVIELIST_NO, A.MOVIELIST_NAME, A.MOVIELIST_DEPTH, NVL(C.TOTCOUNT,0) TOTCOUNT, NVL(B.MCOUNT,0) MCOUNT, NVL(D.RCNT,0) RCNT
+		     FROM
+		        (
+		         SELECT  CASE   WHEN SUBSTR(MOVIELIST_NO,1,2) =10 THEN '001'  else SUBSTR(MOVIELIST_NO,1,2) end as gubun
+		         , web_seq, MOVIELIST_ID, MOVIELIST_NO, MOVIELIST_NAME, MOVIELIST_DEPTH
+		         FROM MOVIELIST where actYn='Y'
+		        ) A,
+		        (
+		         SELECT
+		         CASE   WHEN SUBSTR(MOVIELIST_NO,1,4) ='0102' THEN 3
+		         WHEN SUBSTR(MOVIELIST_NO,1,4) ='1001' THEN 44
+		          WHEN SUBSTR(MOVIELIST_NO,1,4) ='1002' THEN 55
+		          WHEN SUBSTR(MOVIELIST_NO,1,4) ='1003' THEN 71
+		         else A1.MOVIELIST_ID end as MOVIELIST_ID
+		         , COUNT(*) MCOUNT
+		           FROM MOVIELIST_ITEMS A1, MOVIELIST C1,
+		              (
+		         SELECT DISTINCT MOVIE_ID, MOVIE_SEQ
+		                 FROM USER_MOVIELIST
+		                WHERE USER_ID = #{userId}
+		              ) B1
+		          WHERE A1.MOVIELIST_ID = C1.MOVIELIST_ID
+		            AND A1.MOVIE_ID = B1.MOVIE_ID
+		            AND A1.MOVIE_SEQ = B1.MOVIE_SEQ and C1.actYn='Y'
+		          GROUP BY CASE   WHEN SUBSTR(MOVIELIST_NO,1,4) ='0102' THEN 3
+		          WHEN SUBSTR(MOVIELIST_NO,1,4) ='1001' THEN 44
+		          WHEN SUBSTR(MOVIELIST_NO,1,4) ='1002' THEN 55
+		          WHEN SUBSTR(MOVIELIST_NO,1,4) ='1003' THEN 71
+		          else A1.MOVIELIST_ID end
+		        ) B,
+		        (
+		          SELECT
+		          CASE   WHEN SUBSTR(MOVIELIST_NO,1,4) ='0102' THEN 3
+		          WHEN SUBSTR(MOVIELIST_NO,1,4) ='1001' THEN 44
+		          WHEN SUBSTR(MOVIELIST_NO,1,4) ='1002' THEN 55
+		          WHEN SUBSTR(MOVIELIST_NO,1,4) ='1003' THEN 71
+		          else A1.MOVIELIST_ID end as MOVIELIST_ID
+		          , COUNT(*) TOTCOUNT
+		           FROM MOVIELIST_ITEMS  A1, MOVIELIST C1
+		           WHERE A1.MOVIELIST_ID = C1.MOVIELIST_ID and C1.actYn='Y'
+		           GROUP BY CASE   WHEN SUBSTR(MOVIELIST_NO,1,4) ='0102' THEN 3
+		           WHEN SUBSTR(MOVIELIST_NO,1,4) ='1001' THEN 44
+		          WHEN SUBSTR(MOVIELIST_NO,1,4) ='1002' THEN 55
+		          WHEN SUBSTR(MOVIELIST_NO,1,4) ='1003' THEN 71
+		           else A1.MOVIELIST_ID end
+		        ) C,
+		        (SELECT
+		          CASE WHEN SUBSTR(MOVIELIST_NO,1,2) =10 THEN '001'  else SUBSTR(MOVIELIST_NO,1,2) end as MNO, COUNT(*) AS RCNT
+		          FROM MOVIELIST
+		           WHERE SUBSTR(MOVIELIST_NO,1,2) = SUBSTR(MOVIELIST_NO,1,2)
+		           AND MOVIELIST_DEPTH IN (1,2) GROUP BY SUBSTR(MOVIELIST_NO,1,2)
+		        ) D
+		   WHERE A.MOVIELIST_ID = B.MOVIELIST_ID (+)
+		      AND A.MOVIELIST_ID = C.MOVIELIST_ID (+)
+		      AND A.MOVIELIST_DEPTH IN (1,2)
+		      AND A.GUBUN = D.MNO
+		      ORDER BY a.GUBUN, a.MOVIELIST_DEPTH, a.WEB_SEQ
+    </select>
+
+
+    <select id="selectDbListCount" parameterType="hashMap" resultType="int">
+        select COUNT(*) MCOUNT
+       		from (SELECT DISTINCT A.MOVIE_ID, A.MOVIE_SEQ
+       				FROM MOVIELIST_ITEMS A
+       				INNER JOIN MOVIE_SE B ON A.MOVIE_SEQ = B.MOVIE_SEQ
+	       			 <if test="searchText != null and searchText != ''">
+				       	<if test="searchType == 'TITLE' ">
+				           	AND B.TITLE LIKE '%' || #{searchText} || '%'
+				           </if>
+				        <if test="searchType == 'YEAR' ">
+				           	AND B.PROD_YEAR =#{searchText}
+				       	</if>
+				     </if>
+       			 )
+    </select>
+
+    <select id="selectUserDbViewCount" parameterType="hashMap" resultType="int">
+        select COUNT(*) MCOUNT
+        	FROM   (SELECT DISTINCT A.MOVIE_ID, A.MOVIE_SEQ
+        				FROM MOVIELIST_ITEMS A, USER_MOVIELIST B
+        				INNER JOIN MOVIE_SE C ON B.MOVIE_SEQ = C.MOVIE_SEQ
+	       				WHERE A.MOVIE_ID = B.MOVIE_ID AND A.MOVIE_SEQ = B.MOVIE_SEQ AND B.USER_ID = #{userId}
+	       				<if test="searchText != null and searchText != ''">
+				        	<if test="searchType == 'TITLE' ">
+				            	AND C.TITLE LIKE '%' || #{searchText} || '%'
+				            </if>
+				            <if test="searchType == 'YEAR' ">
+				            	AND C.PROD_YEAR =#{searchText}
+				        	</if>
+				        </if>
+        			)
+    </select>
+
+
+    <select id="selectExistDetail"  resultType="int">
+        SELECT COUNT(*) AS CNT
+        	FROM MOVIELIST_DETAIL
+        WHERE MOVIELIST_ID = #{idx}
+        	AND CONTENT_DESC IS NOT NULL
+    </select>
+
+    <select id="selectDbDetailInfo" parameterType="hashMap" resultMap="dbDetailMap">
+		SELECT MOVIELIST_ID, CONTENT_DESC
+			FROM MOVIELIST_DETAIL
+		WHERE  MOVIELIST_ID = #{idx}
+    </select>
+
+    <select id="selectDbDetailPreNext" resultType="egovMap">
+		SELECT T1.*
+			FROM
+			 (
+			    SELECT MOVIELIST_ID
+			             , MOVIELIST_NO
+			    		 , MOVIELIST_NAME
+			    		 , LEAD(MOVIELIST_NAME,1,'') OVER(ORDER BY MOVIELIST_ID) NEXT_MOVIELISTNAME
+			    		 , LEAD(MOVIELIST_ID,1,-1) OVER(ORDER BY MOVIELIST_ID) NEXT_IDX
+			    		 , LEAD(MOVIELIST_NO,1,-1) OVER(ORDER BY MOVIELIST_ID) NEXT_NO
+			    		 , Lag(MOVIELIST_NAME,1,'이전글') OVER(ORDER BY MOVIELIST_ID) PREV_MOVIELISTNAME
+			    		 , Lag(MOVIELIST_ID,1,-1) OVER(ORDER BY MOVIELIST_ID) PREV_IDX
+			    		 , Lag(MOVIELIST_NO,1,-1) OVER(ORDER BY MOVIELIST_ID) PREV_NO
+				  FROM MOVIELIST
+				  WHERE MOVIELIST_DEPTH = 2
+			) T1
+		WHERE T1.MOVIELIST_ID = #{idx}
+
+    </select>
+
+	<select id="selectDbDetailViewInfo" parameterType="hashMap" resultMap="dbDetailMap" >
+		SELECT A.MOVIELIST_ID
+		      ,A.MOVIELIST_NO
+		      ,A.MOVIELIST_NAME
+		      ,B.DIV1_MOVIELIST_NAME
+		      ,A.EXPLAIN_CONTENT
+		FROM MOVIELIST A
+		     INNER JOIN
+		     (
+		     	SELECT MOVIELIST_NO AS DIV1_MOVIELIST_NO ,MOVIELIST_NAME AS DIV1_MOVIELIST_NAME
+		      	FROM MOVIELIST
+		      ) B
+		      	ON SUBSTR(A.MOVIELIST_NO, 0, 2) = B.DIV1_MOVIELIST_NO
+		WHERE A.MOVIELIST_DEPTH = 2 AND A.MOVIELIST_ID = #{idx}
+	</select>
+
+	<select id="selectDbDetailDivList" parameterType="hashMap" resultType="egovMap">
+       SELECT A.MOVIELIST_ID
+		      ,A.MOVIELIST_NO
+		      ,A.MOVIELIST_NAME
+		      ,A.WEB_SEQ
+		      ,A.ACTYN
+		      ,NVL((B.cnt), 0) as totcnt
+		      ,NVL((C.vcnt), 0) as vcnt
+		FROM MOVIELIST A
+           LEFT OUTER JOIN (SELECT COUNT(*) cnt, MOVIELIST_ID
+                FROM MOVIELIST_ITEMS
+                GROUP BY MOVIELIST_ID
+            ) B
+            ON A.MOVIELIST_ID = B.MOVIELIST_ID
+             LEFT OUTER JOIN (SELECT COUNT(*) vcnt, MOVIELIST_ID
+                FROM USER_MOVIELIST
+                WHERE USER_ID= #{userId}
+                GROUP BY MOVIELIST_ID
+             ) C
+             ON A.MOVIELIST_ID = C.MOVIELIST_ID
+		WHERE LENGTH(A.MOVIELIST_NO) = 6
+		      AND SUBSTR(A.MOVIELIST_NO, 0, 4) = #{movielistNo}
+		      AND A.ACTYN != 'D'
+		ORDER BY A.WEB_SEQ
+	 </select>
+
+	 <select id="selectDbDetailDivMovieList"  parameterType="hashMap" resultType="egovMap">
+	 	SELECT B.MOVIELIST_ITEMS_ID
+              ,CASE B.MOVIE_ID WHEN 'X' THEN B.MOVIE_TITLE ELSE DECODE(C.ORG_TIT, NULL, C.TITLE, C.TITLE || '(' || C.ORG_TIT || ')') END AS TITLE
+              ,CASE B.MOVIE_ID WHEN 'X' THEN B.DIRECTOR ELSE C.DIRECTOR END AS DIRECTOR
+              ,CASE B.MOVIE_ID WHEN 'X' THEN TO_CHAR(B.PROD_YEAR) ELSE C.PROD_YEAR END AS PROD_YEAR
+		      ,B.MOVIE_SEQ
+		      ,NVL(D.MOVIE_VIEW_CNT, 0) AS MOVIE_VIEW_CNT
+              ,E.MOVIELIST_NAME AS DIV1_MOVIELIST_NAME
+              ,F.MOVIELIST_NAME AS DIV2_MOVIELIST_NAME
+              ,G.MOVIELIST_NAME AS DIV3_MOVIELIST_NAME
+              ,C.MOVIE_ID
+              ,A.MOVIELIST_ID
+              ,CASE NVL(H.cnt, 0) WHEN 0 THEN 'N' ELSE 'Y' END AS USERVIEW
+              ,NVL(K.DCOUNT, 0) AS DCOUNT
+              ,NVL(K.RCOUNT, 0) AS RCOUNT
+              ,NVL(K.VCOUNT, 0) AS VCOUNT
+		FROM MOVIELIST A
+		    ,MOVIELIST_ITEMS B
+		    ,MOVIE_SE C
+		    ,(SELECT A.MOVIE_SEQ, COUNT(1) AS MOVIE_VIEW_CNT
+		      FROM USER_MOVIELIST A
+		      GROUP BY MOVIE_SEQ) D
+		    ,(SELECT MOVIELIST_NO, MOVIELIST_NAME FROM MOVIELIST) E
+		    ,(SELECT MOVIELIST_NO, MOVIELIST_NAME FROM MOVIELIST) F
+		    ,(SELECT MOVIELIST_NO, MOVIELIST_NAME FROM MOVIELIST) G
+		    ,(SELECT COUNT(*) as cnt,MOVIE_SEQ FROM USER_MOVIELIST WHERE USER_ID = #{userId} GROUP BY MOVIE_SEQ ) H
+		    ,(	SELECT MOVIE_ID, MOVIE_SEQ, SUM(DCOUNT) DCOUNT, SUM(RCOUNT) RCOUNT, SUM(VCOUNT) VCOUNT
+ 	 			  FROM (
+ 						SELECT  A1.MOVIE_ID, A1.MOVIE_SEQ,
+ 								DECODE(C1.DEV_CLSS,'D',1,0) DCOUNT,  DECODE(C1.DEV_CLSS,'R',1,0) RCOUNT,  DECODE(C1.DEV_CLSS,'V',1,0) VCOUNT
+ 						  FROM
+ 						         (SELECT A1.VIDEO_ID, A1.MOVIE_ID, A1.MOVIE_SEQ FROM VIDEO_MOV_REL A1, MOVIELIST_ITEMS B1, MOVIELIST C1
+                                  WHERE SUBSTR(C1.MOVIELIST_NO, 0, 4) = #{movielistNo}
+                                    AND C1.MOVIELIST_DEPTH = '3'
+                                    AND B1.MOVIELIST_ID = C1.MOVIELIST_ID
+                                    AND A1.MOVIE_ID = B1.MOVIE_ID
+                                    AND A1.MOVIE_SEQ = B1.MOVIE_SEQ ) A1 ,
+                                VIDEO C1, VIDEO_DETAIL D1
+                        WHERE A1.VIDEO_ID = C1.VIDEO_ID
+                          AND A1.VIDEO_ID = D1.VIDEO_ID
+                          AND C1.DEV_CLSS IN ('D','R','V')
+                          AND D1.POS_CLSS IN ('3','4','5')
+                     )
+                GROUP BY MOVIE_ID, MOVIE_SEQ    ) K
+		WHERE 1 = 1
+		      AND A.MOVIELIST_ID = B.MOVIELIST_ID
+		      AND B.MOVIE_ID = C.MOVIE_ID
+		      AND B.MOVIE_SEQ = C.MOVIE_SEQ
+		      AND B.MOVIE_SEQ = D.MOVIE_SEQ(+)
+		      AND SUBSTR(A.MOVIELIST_NO, 0, 2) = E.MOVIELIST_NO(+)
+		      AND SUBSTR(A.MOVIELIST_NO, 0, 4) = F.MOVIELIST_NO(+)
+		      AND SUBSTR(A.MOVIELIST_NO, 0, 6) = G.MOVIELIST_NO(+)
+              AND SUBSTR(A.MOVIELIST_NO, 0, 4) = #{movielistNo}
+		      AND B.MOVIE_SEQ = H.MOVIE_SEQ (+)
+		      AND B.MOVIE_SEQ = K.MOVIE_SEQ (+)
+		ORDER BY
+		A.MOVIELIST_NO, B.WEB_SEQ, B.CREATE_DATE DESC
+	 </select>
+
+    <insert id="insertUserViewProc" parameterType="hashMap">
+        INSERT INTO USER_MOVIELIST(
+        	USER_ID, MOVIELIST_ID, MOVIE_ID, MOVIE_SEQ
+        )
+        VALUES (
+			#{userId}, #{movielistId}, #{movieId}, #{movieSeq}
+        )
+    </insert>
+
+    <delete id="deleteUserViewProc" parameterType="hashMap">
+        DELETE USER_MOVIELIST
+        	WHERE USER_ID = #{userId}
+        	AND MOVIELIST_ID = #{movielistId}
+			AND MOVIE_ID	= #{movieId}
+			AND MOVIE_SEQ	= #{movieSeq}
+    </delete>
+
+     <select id="selectUserViewCount" parameterType="hashMap" resultType="int">
+        SELECT COUNT(1)
+          FROM USER_MOVIELIST
+		WHERE USER_ID = #{userId}
+        	AND MOVIELIST_ID = #{movielistId}
+			AND MOVIE_ID	= #{movieId}
+			AND MOVIE_SEQ	= #{movieSeq}
+    </select>
+
+    <sql id="selectAllMovieListQuery">
+		SELECT B.MOVIELIST_ITEMS_ID
+              ,CASE B.MOVIE_ID WHEN 'X' THEN B.MOVIE_TITLE ELSE DECODE(C.ORG_TIT, NULL, C.TITLE, C.TITLE || '(' || C.ORG_TIT || ')') END AS TITLE
+              ,CASE B.MOVIE_ID WHEN 'X' THEN B.DIRECTOR ELSE C.DIRECTOR END AS DIRECTOR
+              ,CASE B.MOVIE_ID WHEN 'X' THEN TO_CHAR(B.PROD_YEAR) ELSE C.PROD_YEAR END AS PROD_YEAR
+		      ,B.MOVIE_SEQ
+		      ,NVL(D.MOVIE_VIEW_CNT, 0) AS MOVIE_VIEW_CNT
+              ,E.MOVIELIST_NAME AS DIV1_MOVIELIST_NAME
+              ,F.MOVIELIST_NAME AS DIV2_MOVIELIST_NAME
+              ,G.MOVIELIST_NAME AS DIV3_MOVIELIST_NAME
+              ,H.GROUPCNT AS GROUPCNT
+              ,CASE NVL(I.cnt, 0) WHEN 0 THEN 'N' ELSE 'Y' END AS USERVIEW
+              ,A.MOVIELIST_ID
+              ,C.MOVIE_ID
+		FROM MOVIELIST A
+		    ,MOVIELIST_ITEMS B
+		    ,MOVIE_SE C
+		    ,(SELECT A.MOVIE_SEQ, COUNT(1) AS MOVIE_VIEW_CNT
+		      FROM USER_MOVIELIST A
+		      GROUP BY MOVIE_SEQ) D
+		    ,(SELECT MOVIELIST_NO, MOVIELIST_NAME FROM MOVIELIST) E
+		    ,(SELECT MOVIELIST_NO, MOVIELIST_NAME FROM MOVIELIST) F
+		    ,(SELECT MOVIELIST_NO, MOVIELIST_NAME FROM MOVIELIST) G
+		    ,(SELECT MOVIE_SEQ,count(1) as GROUPCNT FROM MOVIELIST_ITEMS GROUP BY MOVIE_SEQ) H
+		    ,(SELECT COUNT(*) as cnt,MOVIE_SEQ FROM USER_MOVIELIST WHERE USER_ID = #{userId} GROUP BY MOVIE_SEQ ) I
+		WHERE 1 = 1
+		      AND A.MOVIELIST_ID = B.MOVIELIST_ID
+		      AND B.MOVIE_ID = C.MOVIE_ID
+		      AND B.MOVIE_SEQ = C.MOVIE_SEQ
+		      AND B.MOVIE_SEQ = D.MOVIE_SEQ(+)
+		      AND SUBSTR(A.MOVIELIST_NO, 0, 2) = E.MOVIELIST_NO(+)
+		      AND SUBSTR(A.MOVIELIST_NO, 0, 4) = F.MOVIELIST_NO(+)
+		      AND SUBSTR(A.MOVIELIST_NO, 0, 6) = G.MOVIELIST_NO(+)
+		      AND B.MOVIE_SEQ = H.MOVIE_SEQ
+		      AND B.MOVIE_SEQ = I.MOVIE_SEQ (+)
+        <if test="searchText != null and searchText != ''">
+        	<if test="searchType == 'TITLE' ">
+            	AND C.TITLE LIKE '%' || #{searchText} || '%'
+            </if>
+            <if test="searchType == 'YEAR' ">
+            	AND C.PROD_YEAR =#{searchText}
+        	</if>
+        </if>
+		ORDER BY
+		A.MOVIELIST_NO, B.WEB_SEQ, B.CREATE_DATE DESC
+    </sql>
+
+    <select id="selectAllMovieListCount" parameterType="hashMap" resultType="int">
+        <include refid="countHeaderQuery" />
+        <include refid="selectAllMovieListQuery"/>
+        <include refid="countTailQuery" />
+    </select>
+
+    <select id="selectAllMoviePageList" parameterType="hashMap" resultType="egovMap">
+        <include refid="pagingHeaderQuery" />
+        <include refid="selectAllMovieListQuery"/>
+        <include refid="pagingTailQuery" />
+    </select>
+
+    <select id="selectMainKeywordList" resultMap="mainKeywordMap">
+        SELECT A.MAIN_CONTENT_ID
+              ,A.CONTENT_TYPE_CD
+              ,A.TITLE
+              ,A.URL
+              ,A.FILE_ALT
+              ,A.ORG_FILE_NAME
+              ,A.FILE_NAME
+              ,B.MAIN_CONTENT_ID AS TAG_MAIN_CONTENT_ID
+              ,B.UP_MAIN_CONTENT_ID AS TAG_UP_MAIN_CONTENT_ID
+              ,B.TITLE AS TAG_TITLE
+              ,B.URL AS TAG_URL
+        FROM TB_MAIN_CONTENT A
+		     LEFT OUTER JOIN TB_MAIN_CONTENT B
+		         ON A.MAIN_CONTENT_ID = B.UP_MAIN_CONTENT_ID
+		            AND B.ACTIVE_YN = 'Y'
+        WHERE A.CONTENT_TYPE_CD = 'DB_KEYWORD'
+              AND A.ACTIVE_YN = 'Y'
+        ORDER BY A.SORT_NO, B.SORT_NO
+    </select>
+
+    <select id="selectMainFestivalList" resultMap="mainFestivalMap">
+		SELECT A.MAIN_CONTENT_ID
+		      ,A.CONTENT_TYPE_CD
+		      ,A.FILE_ALT
+		      ,A.ORG_FILE_NAME
+		      ,A.FILE_NAME
+		      ,B.NAME_KOR AS FESTIVAL_NAME
+		      ,B.FE_NO
+		      ,C.FED_NO
+		      ,C.FED_YEAR
+		      ,D.FEA_AWORD
+		      ,D.FEA_MOVIE
+		FROM TB_MAIN_CONTENT A
+		     INNER JOIN TBLFESTIVAL B ON A.KEY1 = B.FE_NO
+		     INNER JOIN (SELECT FE_NO, FED_YEAR, FED_NO
+		                 FROM (SELECT FE_NO, FED_YEAR, FED_NO, MAX(FED_NO) OVER (PARTITION BY FE_NO) AS MAX_FED_NO FROM TBLFESTIVALDETAIL)
+		                 WHERE FED_NO = MAX_FED_NO) C
+		         ON B.FE_NO = C.FE_NO
+		     LEFT OUTER JOIN
+		     (SELECT *
+		      FROM (SELECT FED_NO, FEA_AWORD, FEA_MOVIE, ROW_NUMBER() OVER(PARTITION BY FED_NO ORDER BY SORT_SEQ) AS RN FROM TBLFESTIVALAWORD)
+		      WHERE RN &lt;= 3) D
+		         ON C.FED_NO = D.FED_NO
+		WHERE A.CONTENT_TYPE_CD = 'DB_FESTIVAL'
+		ORDER BY A.SORT_NO, D.RN
+    </select>
+
+    <select id="selectMainThemeKeywordInfo" resultMap="mainThemeMap">
+		SELECT A.MAIN_CONTENT_ID
+		      ,A.CONTENT_TYPE_CD
+		      ,A.KEY1
+		      ,B.IDX
+		      ,B.KEYWORDNAME
+		      ,B.KEYWORDREF
+		      ,B.FILENM
+		      ,C.MOVIE_ID
+		      ,C.MOVIE_SEQ
+		      ,D.TITLE
+		      ,D.PROD_YEAR
+		      ,D.DIRECTOR
+		      ,E.TNO
+		      ,E.FILENAME
+		FROM TB_MAIN_CONTENT A
+		     INNER JOIN KEYWORD_EXPERT B ON A.KEY1 = B.IDX
+		     LEFT OUTER JOIN KEYWORD_EXPERT_DETAIL C
+		         ON B.KEYWORDREF = C.KEYWORDREF
+		            AND C.STATUS = 'Y'
+		     INNER JOIN MOVIE_SE D
+		         ON C.MOVIE_ID = D.MOVIE_ID
+		            AND C.MOVIE_SEQ = D.MOVIE_SEQ
+		     LEFT OUTER JOIN (SELECT A.MOVIE_ID
+		                            ,A.MOVIE_SEQ
+		                            ,LPAD(A.POSTER_NO, 8, '0') TNO
+		                            ,A.IMAGE_NM FILENAME
+		                            ,MAIN_JPG
+		                            ,ROW_NUMBER() OVER(PARTITION BY A.MOVIE_ID, A.MOVIE_SEQ ORDER BY MAIN_JPG DESC NULLS LAST) AS RN
+		                      FROM POSTER A, POSTER_SET B
+		                      WHERE A.POSTER_ID = B.POSTER_ID
+		                            AND A.TYPE_CLSS = '2'
+		                            AND B.USE_CLSS = '1'
+		                            AND A.MAIN_JPG = 'Y'
+		                            AND B.OPEN_YN = 'Y'
+		                            AND A.IMAGE_NM IS NOT NULL) E
+		         ON D.MOVIE_SEQ = E.MOVIE_SEQ
+		            AND D.MOVIE_ID = E.MOVIE_ID
+		WHERE A.CONTENT_TYPE_CD = 'DB_THEME'
+		      AND A.ACTIVE_YN = 'Y'
+		ORDER BY D.PROD_YEAR DESC
+    </select>
+
+    <select id="selectMainMovieList" resultType="dbMainMovieListVo">
+		SELECT MAIN_CONTENT_ID
+		      ,CONTENT_TYPE_CD
+		      ,MOVIELIST_ID
+		      ,MOVIELIST_NO
+		      ,MOVIELIST_NAME
+		FROM TB_MAIN_CONTENT A INNER JOIN MOVIELIST B ON A.KEY1 = B.MOVIELIST_ID
+		WHERE A.CONTENT_TYPE_CD = 'DB_LIST'
+		      AND A.ACTIVE_YN = 'Y'
+		ORDER BY A.SORT_NO
+    </select>
+
+    <select id="selectMainBannerInfo" resultType="mainContentVo">
+		SELECT A.MAIN_CONTENT_ID
+		      ,A.CONTENT_TYPE_CD
+		      ,A.UP_MAIN_CONTENT_ID
+		      ,A.TITLE
+		      ,A.URL
+		      ,A.FILE_ALT
+		      ,A.ORG_FILE_NAME
+		      ,A.FILE_NAME
+		FROM TB_MAIN_CONTENT A
+		WHERE A.CONTENT_TYPE_CD = 'DB_BANNER'
+		      AND A.ACTIVE_YN = 'Y'
+		ORDER BY A.SORT_NO
+    </select>
+</mapper>

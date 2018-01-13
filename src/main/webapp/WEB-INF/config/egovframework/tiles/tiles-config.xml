@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE tiles-definitions PUBLIC "-//Apache Software Foundation//DTD Tiles Configuration 3.0//EN" "http://tiles.apache.org/dtds/tiles-config_3_0.dtd">
+<tiles-definitions>
+    <!--  default layout  -->
+	<definition name="layoutType01" template="/WEB-INF/jsp/common/tiles/layouts/layoutType01.jsp">
+		<put-attribute name="title" value="KMDb - 한국영화데이터베이스"/>
+		<put-attribute name="header">
+		    <definition template="/WEB-INF/jsp/common/tiles/template/header.jsp">
+		        <put-attribute name="mainTop" value="/WEB-INF/jsp/common/tiles/template/mainTop.jsp"/>
+		        <put-attribute name="mainNavi" value="/WEB-INF/jsp/common/tiles/template/mainNavi.jsp"/>
+		    </definition>
+		</put-attribute>
+
+		<put-attribute name="footer" value="/WEB-INF/jsp/common/tiles/template/footer.jsp" />
+
+		<put-list-attribute name="commonStyle">
+		    <add-attribute value="https://fonts.googleapis.com/css?family=Oswald:400,500,600"/>
+			<add-attribute value="/resources/css/style.css"/>
+			<add-attribute value="/resources/css/vendors/uniform.default.css"/>
+			<add-attribute value="/resources/css/vendors/selectric.css"/>
+			<add-attribute value="/resources/plugins/owlslide/owl.carousel.css"/>
+			<add-attribute value="/resources/plugins/owlslide/owl.theme.default.css"/>
+			<add-attribute value="/resources/plugins/jquery.mCustomScrollbar/jquery.mCustomScrollbar.css"/>
+			<add-attribute value="/resources/css/jquery-ui.min.css"/>
+		</put-list-attribute>
+
+		<put-list-attribute name="commonScript">
+			<add-attribute value="/resources/js/lib/jquery.validate.min.js"/>
+			<add-attribute value="/resources/js/lib/jquery.bpopup.js"/>
+			<add-attribute value="/resources/plugins/owlslide/owl.carousel.js"/>
+			<add-attribute value="/resources/plugins/owlslide/owl.carousel2.thumbs.js"/>
+			<add-attribute value="/resources/plugins/jquery.selectric-1.11.1/jquery.selectric.min.js"/>
+			<add-attribute value="/resources/plugins/jquery.uniform-2.2.0/jquery.uniform.min.js"/>
+			<add-attribute value="/resources/plugins/jquery.mCustomScrollbar/jquery.mCustomScrollbar.concat.min.js"/>
+			<add-attribute value="/resources/js/common.js"/>
+			<add-attribute value="/resources/js/slider.js"/>
+			<add-attribute value="/resources/js/lib/spin.js"/>
+			<add-attribute value="/resources/js/lib/jquery.spin.js"/>
+			<add-attribute value="/resources/js/lib/inputmask.min.js"/>
+			<add-attribute value="/resources/js/lib/jquery-ui.min.js"/>
+		</put-list-attribute>
+	</definition>
+
+	<definition name="mainLayout" template="/WEB-INF/jsp/common/tiles/layouts/mainLayout.jsp">
+		<put-attribute name="title" value="KMDb - 한국영화데이터베이스"/>
+		<put-attribute name="header">
+		    <definition template="/WEB-INF/jsp/common/tiles/template/mainHeader.jsp">
+		        <put-attribute name="mainTop" value="/WEB-INF/jsp/common/tiles/template/mainTop.jsp"/>
+		        <put-attribute name="mainNavi" value="/WEB-INF/jsp/common/tiles/template/mainNavi.jsp"/>
+		    </definition>
+		</put-attribute>
+
+		<put-attribute name="footer" value="/WEB-INF/jsp/common/tiles/template/footer.jsp" />
+
+		<put-list-attribute name="commonStyle">
+		    <add-attribute value="https://fonts.googleapis.com/css?family=Oswald:400,500,600"/>
+			<add-attribute value="/resources/css/style.css"/>
+			<add-attribute value="/resources/css/vendors/uniform.default.css"/>
+			<add-attribute value="/resources/css/vendors/selectric.css"/>
+			<add-attribute value="/resources/plugins/owlslide/owl.carousel.css"/>
+			<add-attribute value="/resources/plugins/owlslide/owl.theme.default.css"/>
+			<add-attribute value="/resources/css/main.css"/>
+		</put-list-attribute>
+
+		<put-list-attribute name="commonScript">
+			<add-attribute value="/resources/js/lib/jquery.validate.min.js"/>
+			<add-attribute value="/resources/js/lib/jquery.bpopup.js"/>
+			<add-attribute value="/resources/plugins/owlslide/owl.carousel.js"/>
+			<add-attribute value="/resources/plugins/owlslide/owl.carousel2.thumbs.js"/>
+			<add-attribute value="/resources/plugins/jquery.selectric-1.11.1/jquery.selectric.min.js"/>
+			<add-attribute value="/resources/plugins/jquery.uniform-2.2.0/jquery.uniform.min.js"/>
+			<add-attribute value="/resources/js/common.js"/>
+			<add-attribute value="/resources/js/slider.js"/>
+			<add-attribute value="/resources/js/lib/spin.js"/>
+			<add-attribute value="/resources/js/lib/jquery.spin.js"/>
+		</put-list-attribute>
+
+	</definition>
+
+	<definition name="noLayout" template="/WEB-INF/jsp/common/tiles/layouts/noLayout.jsp"/>
+
+	<definition name="engLayout" template="/WEB-INF/jsp/common/tiles/layouts/engLayout.jsp">
+		<put-attribute name="title" value="KMDb - 한국영화데이터베이스"/>
+		<put-attribute name="header">
+		    <definition template="/WEB-INF/jsp/common/tiles/template/header.jsp">
+		        <put-attribute name="mainTop" value="/WEB-INF/jsp/common/tiles/template/mainTop.jsp"/>
+		        <put-attribute name="mainNavi" value="/WEB-INF/jsp/common/tiles/template/mainNavi.jsp"/>
+		    </definition>
+		</put-attribute>
+
+		<put-attribute name="footer" value="/WEB-INF/jsp/common/tiles/template/footer.jsp" />
+
+		<put-list-attribute name="commonStyle">
+		    <add-attribute value="https://fonts.googleapis.com/css?family=Oswald:400,500,600"/>
+			<add-attribute value="/resources/css/style.css"/>
+			<add-attribute value="/resources/css/vendors/uniform.default.css"/>
+			<add-attribute value="/resources/css/vendors/selectric.css"/>
+			<add-attribute value="/resources/plugins/owlslide/owl.carousel.css"/>
+			<add-attribute value="/resources/plugins/owlslide/owl.theme.default.css"/>
+			<add-attribute value="/resources/plugins/jquery.mCustomScrollbar/jquery.mCustomScrollbar.css"/>
+			<add-attribute value="/resources/css/jquery-ui.min.css"/>
+		</put-list-attribute>
+
+		<put-list-attribute name="commonScript">
+			<add-attribute value="/resources/js/lib/jquery.validate.min.js"/>
+			<add-attribute value="/resources/js/lib/jquery.bpopup.js"/>
+			<add-attribute value="/resources/plugins/owlslide/owl.carousel.js"/>
+			<add-attribute value="/resources/plugins/owlslide/owl.carousel2.thumbs.js"/>
+			<add-attribute value="/resources/plugins/jquery.selectric-1.11.1/jquery.selectric.min.js"/>
+			<add-attribute value="/resources/plugins/jquery.uniform-2.2.0/jquery.uniform.min.js"/>
+			<add-attribute value="/resources/plugins/jquery.mCustomScrollbar/jquery.mCustomScrollbar.concat.min.js"/>
+			<add-attribute value="/resources/js/common.js"/>
+			<add-attribute value="/resources/js/slider.js"/>
+			<add-attribute value="/resources/js/lib/spin.js"/>
+			<add-attribute value="/resources/js/lib/jquery.spin.js"/>
+			<add-attribute value="/resources/js/lib/inputmask.min.js"/>
+			<add-attribute value="/resources/js/lib/jquery-ui.min.js"/>
+		</put-list-attribute>
+	</definition>
+
+    <!-- blank popup layout -->
+    <definition name="popLayoutType01" template="/WEB-INF/jsp/common/tiles/layouts/popLayoutType01.jsp">
+        <put-attribute name="title" value="KMDb - 한국영화데이터베이스"/>
+    </definition>
+
+    <definition name="/main/main" extends="mainLayout">
+		<put-attribute name="contents" value="/WEB-INF/jsp/main/main.jsp"/>
+	</definition>
+
+	<definition name="/eng/*" extends="engLayout">
+        <put-attribute name="contents" value="/WEB-INF/jsp/eng/{1}.jsp"/>
+	</definition>
+	<definition name="/eng/*/*" extends="engLayout">
+        <put-attribute name="contents" value="/WEB-INF/jsp/eng/{1}/{2}.jsp"/>
+	</definition>
+	<definition name="/eng/*/*/*" extends="engLayout">
+        <put-attribute name="contents" value="/WEB-INF/jsp/eng/{1}/{2}/{3}.jsp"/>
+	</definition>
+
+	<definition name="/pop/*/*" extends="popLayoutType01">
+        <put-attribute name="contents" value="/WEB-INF/jsp/{1}/pop/{2}.jsp"/>
+	</definition>
+	<definition name="/pop/*/*/*" extends="popLayoutType01">
+        <put-attribute name="contents" value="/WEB-INF/jsp/{1}/{2}/pop/{3}.jsp"/>
+	</definition>
+
+	<definition name="/noLayout/*/*" extends="noLayout">
+        <put-attribute name="contents" value="/WEB-INF/jsp/{1}/{2}.jsp"/>
+	</definition>
+
+	<definition name="/noLayout/*/*/*" extends="noLayout">
+        <put-attribute name="contents" value="/WEB-INF/jsp/{1}/{2}/{3}.jsp"/>
+	</definition>
+
+	<definition name="/*/*" extends="layoutType01">
+        <put-attribute name="contents" value="/WEB-INF/jsp/{1}/{2}.jsp"/>
+	</definition>
+
+	<definition name="/*/*/*" extends="layoutType01">
+        <put-attribute name="contents" value="/WEB-INF/jsp/{1}/{2}/{3}.jsp"/>
+	</definition>
+
+
+</tiles-definitions>

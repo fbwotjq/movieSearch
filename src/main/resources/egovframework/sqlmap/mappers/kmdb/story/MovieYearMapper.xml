@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="egovframework.ag.homepage.story.service.MovieYearDao">
+    <resultMap id="storyMap" type="egovMap">
+        <result property="content" column="CONTENT" jdbcType="CLOB" javaType="java.lang.String"/>
+    </resultMap>
+
+    <select id="selectMovieYearInfo" parameterType="string" resultType="egovMap">
+	    SELECT A.IDX
+		      ,A.MA_YEAR
+		      ,A.SUBJECT
+		      ,A.CONTENT
+		      ,(SELECT MAX(MA_YEAR)
+		        FROM KM_KFILM_HISTORY
+		        WHERE MA_YEAR &lt; A.MA_YEAR)
+		           AS PRE_MA_YEAR
+		      ,(SELECT MIN(MA_YEAR)
+		        FROM KM_KFILM_HISTORY
+		        WHERE MA_YEAR &gt; A.MA_YEAR)
+		           AS NEXT_MA_YEAR
+		FROM KM_KFILM_HISTORY A
+		WHERE MA_YEAR = #{movieYear}
+    </select>
+
+    <select id="selectMaxMovieYear" resultType="string">
+		SELECT MAX(A.MA_YEAR)
+		FROM KM_KFILM_HISTORY A
+    </select>
+
+    <select id="selectMovieYearYearList" resultType="string">
+		SELECT A.MA_YEAR
+		FROM KM_KFILM_HISTORY A
+		ORDER BY A.MA_YEAR
+    </select>
+</mapper>

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/jdbc  http://www.springframework.org/schema/jdbc/spring-jdbc.xsd">
+
+	<bean id="propertyConfigurer" class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+        <property name="locations">
+            <list>
+                <value>classpath:/egovframework/property/globals.properties</value>
+            </list>
+        </property>
+    </bean>
+
+    <!-- MEMBER DB -->
+    <bean id="hikariConfig_MEMBER" class="com.zaxxer.hikari.HikariConfig">
+        <property name="driverClassName" value="${jdbc.driverClassName.member}"/>
+        <property name="jdbcUrl" value="${jdbc.url.member}"/>
+        <property name="username" value="${jdbc.username.member}"/>
+        <property name="password" value="${jdbc.password.member}"/>
+        <property name="connectionTestQuery" value="SELECT 1 FROM DUAL"/>
+    </bean>
+
+    <!-- KMDB -->
+    <bean id="hikariConfig_KMDB" class="com.zaxxer.hikari.HikariConfig">
+        <property name="driverClassName" value="${jdbc.driverClassName.kmdb}"/>
+        <property name="jdbcUrl" value="${jdbc.url.kmdb}"/>
+        <property name="username" value="${jdbc.username.kmdb}"/>
+        <property name="password" value="${jdbc.password.kmdb}"/>
+        <property name="connectionTestQuery" value="SELECT 1 FROM DUAL"/>
+    </bean>
+
+    <!-- KF -->
+    <bean id="hikariConfig_KF" class="com.zaxxer.hikari.HikariConfig">
+        <property name="driverClassName" value="${jdbc.driverClassName.kf}"/>
+        <property name="jdbcUrl" value="${jdbc.url.kf}"/>
+        <property name="username" value="${jdbc.username.kf}"/>
+        <property name="password" value="${jdbc.password.kf}"/>
+        <property name="connectionTestQuery" value="SELECT 1 FROM DUAL"/>
+    </bean>
+
+
+    <bean id="dataSource_MEMBER" class="com.zaxxer.hikari.HikariDataSource" destroy-method="close">
+        <constructor-arg ref="hikariConfig_MEMBER"/>
+    </bean>
+
+    <bean id="dataSource_KMDB" class="com.zaxxer.hikari.HikariDataSource" destroy-method="close">
+        <constructor-arg ref="hikariConfig_KMDB"/>
+    </bean>
+
+    <bean id="dataSource_KF" class="com.zaxxer.hikari.HikariDataSource" destroy-method="close">
+        <constructor-arg ref="hikariConfig_KF"/>
+    </bean>
+
+</beans>

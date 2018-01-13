@@ -1,0 +1,1175 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="egovframework.ag.homepage.db.service.KorDao">
+
+    <resultMap id="movieAwardMap" type="egovMap">
+    	<result  property="feNo" column="FE_NO"  javaType="String"  />
+		<result  property="fedNo" column="FED_NO"  javaType="String"  />
+		<result  property="fedYear" column="FED_YEAR"  javaType="String"  />
+		<result  property="feNoParam" column="FE_NO_PARAM"  javaType="String"  />
+		<result  property="fedNoParam" column="FED_NO_PARAM"  javaType="String"  />
+		<result  property="fedYearParam" column="FED_YEAR_PARAM"  javaType="String"  />
+		<result  property="feaMoviecode" column="FEA_MOVIECODE"  javaType="String"  />
+        <collection property="subList" column="{feNoParam=FE_NO_PARAM,fedNoParam=FED_NO_PARAM,fedYearParam=FED_YEAR_PARAM,feaMoviecode=FEA_MOVIECODE}" javaType="java.util.ArrayList" ofType="egovMap" select="selectMovieAwardYearSubList"/>
+    </resultMap>
+
+    <sql id="countHeaderQuery">
+		SELECT COUNT(1) AS TOTAL_COUNT FROM (
+    </sql>
+
+    <sql id="countTailQuery">
+        )
+    </sql>
+
+    <sql id="pagingHeaderQuery">
+		SELECT * FROM (SELECT ROWNUM AS RNUM, Z.* FROM (
+    </sql>
+
+    <sql id="pagingTailQuery">
+        ) Z WHERE ROWNUM &lt;= #{_page} * #{_pageSize}) WHERE RNUM &gt; (#{_page} - 1) * #{_pageSize}
+    </sql>
+
+    <select id="selectMovieDetailInfo" parameterType="hashMap" resultType="egovMap">
+		SELECT TITLE, TYPE_CLSS, KEYWORDS, PROD_YEAR, FILMCNS_CLSS, ORG_TIT, SCENARIO, DIRECTOR, CNS_DATE, CNS_NO, ORG_AUTHOR, KOFIC_NKR, TECHNIQUE_CLSS, NATION_CLSS, LEVEL_CLSS, TELECAST_FRDATE, LEVELNM, THEATER, COMPY_CLSS, TITLE_ENG, PLOT,WEB_URL, RUNTIME,EXPORT_STAT, DISTRIBUTE, PLACE, AWARD, CODE_NM,PATTEN_CLSS,RELEASE_DATE,national_clss, ROW_NUM
+			FROM ( SELECT A.TITLE
+					, A.TYPE_CLSS
+					, A.KEYWORDS
+					, A.PROD_YEAR
+					, A.FILMCNS_CLSS
+					, A.ORG_TIT, A.SCENARIO
+					, A.DIRECTOR
+					, A.CNS_DATE
+					, A.CNS_NO
+					, A.ORG_AUTHOR
+					, A.KOFIC_NKR
+					, A.TECHNIQUE_CLSS
+					, A.NATION_CLSS
+					, A.LEVEL_CLSS
+					, A.TELECAST_FRDATE
+					, LEVEL1.CODE_NM LEVELNM
+					, B.THEATER
+					, A.COMPY_CLSS
+					, A.TITLE_ENG
+					, D.PLOT as PLOT,B.WEB_URL
+					, a.RUNTIME,B.EXPORT_STAT
+					, UF_PRODREL(A.MOVIE_ID, A.MOVIE_SEQ, '904') AS DISTRIBUTE
+					, A.PLACE
+					, B.AWARD
+					, C.CODE_NM,A.PATTEN_CLSS
+					, A.RELEASE_DATE
+					, A.NATIONAL_CLSS
+					, ROWNUM AS ROW_NUM
+		   		 FROM MOVIE_SE A , MOVIE B , CODEINFO C,
+		    		( SELECT MOVIE_ID, MOVIE_SEQ, DBMS_LOB.SUBSTR(PLOT, 1500, 1) PLOT
+				        FROM MOVIE_PLOT
+				            WHERE MOVIE_ID = #{movieId}
+				            AND MOVIE_SEQ = #{movieSeq}
+				            AND LANG_CLSS = '1' AND OPEN_YN = 'Y'
+				            AND ROWNUM &lt; 2 ) D,
+				            ( SELECT CODE, CODE_NM FROM CODEINFO WHERE DIV_ID = 'A08') LEVEL1 ,
+				                ( SELECT CODE, CODE_NM FROM CODEINFO WHERE DIV_ID = 'A01') PATTERN
+				              WHERE A.MOVIE_ID = B.MOVIE_ID(+) AND A.MOVIE_SEQ = B.MOVIE_SEQ(+)
+				              AND A.MOVIE_ID = D.MOVIE_ID(+) AND A.MOVIE_SEQ = D.MOVIE_SEQ(+)
+				              AND A.MOVIE_ID = #{movieId}
+				              AND A.MOVIE_SEQ = #{movieSeq}
+				              AND A.LEVEL_CLSS = LEVEL1.CODE(+)
+				              AND C.DIV_ID = 'A05'
+				              AND A.PATTEN_CLSS = PATTERN.CODE(+)
+				              ORDER BY DBMS_RANDOM.RANDOM
+				  	)
+		WHERE ROWNUM = 1
+    </select>
+
+    <select id="selectMovieHeadImg" parameterType="hashMap" resultType="egovMap">
+		SELECT TNO
+		         , SUBSTR(TNO, 1, 2) || '/' || SUBSTR(TNO, 3, 2) || '/' || SUBSTR(TNO, 5, 2) IMG_PATH
+		         , FILENAME
+		         , MAIN_JPG
+		  FROM (
+				SELECT LPAD(A.POSTER_NO,8,'0') tno
+					 , A.IMAGE_NM filename
+					 , A.main_jpg
+				  FROM POSTER A
+				     , POSTER_SET B
+				WHERE MOVIE_ID = #{movieId}
+		            AND MOVIE_SEQ = #{movieSeq}
+		            AND A.POSTER_ID = B.POSTER_ID
+					AND A.TYPE_CLSS = '2'
+					AND B.USE_CLSS = '1'
+					AND A.MAIN_JPG = 'Y'
+					AND B.OPEN_YN = 'Y'
+					AND A.IMAGE_NM IS NOT NULL
+		)
+    </select>
+
+     <select id="selectActorList" parameterType="hashMap" resultType="egovMap">
+		SELECT PERSON_NM
+				 , CREDIT_ID
+				 , CREDIT_NM
+				 , STAFF
+				 , CREDIT_SEQ
+				 , PERSON_ID
+				 , KORNM
+				 , ENGNM
+		FROM (
+				   SELECT  A.PERSON_NM
+				   			 , B.CREDIT_ID
+				   			 , B.CREDIT_NM
+				   			 , A.STAFF
+				   			 , A.CREDIT_SEQ
+				   			 , C.PERSON_ID
+				   			 , C.KORNM
+				   			 , C.ENGNM
+          			   FROM CREDIT_MOVIE A
+          			         , CREDIT_MANG B
+          			         , PERSON C
+          			 WHERE A.CREDIT_ID = B.CREDIT_ID(+)
+          			     AND A.PERSON_ID = C.PERSON_ID(+)
+                         AND A.MOVIE_ID = #{movieId}
+                         AND A.MOVIE_SEQ = #{movieSeq}
+                         AND B.CREDIT_ID = '005'
+                         AND A.OPEN_YN = 'Y'
+                      ORDER BY A.CREDIT_SEQ
+                                  , C.PERSON_ID ASC
+                                  , A.PERSON_NM
+          )
+    </select>
+
+
+    <select id="selectDirectorList"  parameterType="hashMap" resultType="egovMap">
+
+		SELECT CREDIT_ID
+				 , PERSON_ID
+				 , PERSON_NM
+		  FROM CREDIT_MOVIE
+		WHERE MOVIE_ID = #{movieId}
+            AND MOVIE_SEQ = #{movieSeq}
+          	AND CREDIT_ID IN ('001')
+          	AND OPEN_YN = 'Y'
+         ORDER BY CREDIT_ID, CREDIT_SEQ
+
+    </select>
+
+    <select id="selectVodInfo" parameterType="hashMap" resultType="egovMap">
+		SELECT MUL_ID
+		         , FILE_ID
+		         , MOVIE_ID
+		         , MOVIE_SEQ
+		         , VER_TITLE
+				 , ADJUST_DATE
+				 , TYPE_CLSS
+				 , DIRECTOR
+				 , KEYWORDS
+				 , PROD_YEAR
+				 , RUNTIME
+				 , RUNTIME2
+				 , MSCREEN_CLSS
+				 , TITLE_ETC
+				 , PRICE
+				 , MUL_TITLE
+				 , MULTOR_NM
+				 , ROW_NUM
+				 , CODE_NM
+				 , H_SIZE
+				 , V_SIZE
+				 , YOUTUBE_URL
+				 , NAVER_URL
+		FROM (
+					SELECT MUL_ID
+							 , FILE_ID
+							 , MOVIE_ID
+							 , MOVIE_SEQ
+							 , VER_TITLE
+							 , ADJUST_DATE
+							 , TYPE_CLSS
+							 , DIRECTOR
+							 , KEYWORDS
+							 , PROD_YEAR
+							 , RUNTIME
+							 , RUNTIME2
+							 , MSCREEN_CLSS
+							 , TITLE_ETC
+							 , PRICE
+							 , MUL_TITLE
+							 , MULTOR_NM
+							 , CODE_NM
+							 , H_SIZE
+							 , V_SIZE
+							 , YOUTUBE_URL
+							 , NAVER_URL
+							 , ROWNUM AS ROW_NUM
+					  FROM (
+					  			SELECT A.MUL_ID
+					  					 , A.FILE_ID
+					  					 , A.VER_TITLE
+					  					 , A.ADJUST_DATE
+					  					 , A.PRICE
+					  					 , A.MULTOR_NM
+					  					 , A.YOUTUBE_URL
+					  					 , A.NAVER_URL
+					  					 , B.RUNTIME
+					  					 , to_char(to_date(B.RUNTIME*60,'sssss'),'hh24:mi:ss') RUNTIME2
+					  					 , B.MSCREEN_CLSS
+					  					 , B.TITLE_ETC
+					  					 , B.MUL_TITLE
+					  					 , C.MOVIE_ID
+					  					 , C.MOVIE_SEQ
+					  					 , C.TYPE_CLSS
+					  					 , C.DIRECTOR
+					  					 , C.KEYWORDS
+					  					 , C.PROD_YEAR
+					  					 , D.CODE_NM
+										 , E.H_SIZE
+										 , E.V_SIZE
+								  FROM MULTI_FILE A
+								        , MULTI_NEW B
+								        , V_MOVIE_MUL_DETAIL C
+								        , CODEINFO D
+								        , MULTI_FILE E
+								WHERE A.MUL_ID = B.MUL_ID
+									AND B.MUL_ID = C.MUL_ID
+									<![CDATA[
+									AND A.USE_CLSS = '6'
+									AND A.OPEN_YN = 'Y'
+									AND A.F_SIZE > 0
+									AND MSCREEN_CLSS = '2'
+									AND B.TITLE_ETC = '본편'
+									AND (
+											PATTEN_CLSS NOT IN ('2','17','24') OR PATTEN_CLSS IN ('2','13','17','24')
+											)
+	  								]]>
+									AND C.MOVIE_ID=#{movieId}
+									AND C.MOVIE_SEQ=#{movieSeq}
+									AND A.M_BPS='1000'
+									AND D.CODE = B.COLOR_CLSS
+									AND D.DIV_ID ='B20'
+									AND B.MUL_ID = E.MUL_ID
+							  	ORDER BY DBMS_RANDOM.RANDOM
+							  )
+	  				  )
+			WHERE ROW_NUM = 1
+    </select>
+
+    <select id="selectImageList" parameterType="hashMap" resultType="egovMap">
+		SELECT TITLE , PROD_YEAR , IMGID , STILL_DETAIL_ID , STILL_DETAIL_NO, prohibit_19, seq
+		     , SUBSTR(IMGID, 1, 2) || '/' || SUBSTR(IMGID, 3, 2) || '/' || SUBSTR(IMGID, 5, 2) || '/' || 'tn_' || SUBSTR(STILL_DETAIL_NO, 1,10) || '.jpg'  IMG_PATH
+		FROM (
+			SELECT A.TITLE
+				, A.PROD_YEAR
+				, LPAD(B.STILL_T_NO,8,'0') IMGID
+				, C.STILL_DETAIL_ID
+				, C.STILL_DETAIL_NO
+				, B.prohibit_19
+				, rownum as seq
+			  FROM MOVIE_SE A , STILL B, STILL_DETAIL C
+			 WHERE A.MOVIE_ID = B.MOVIE_ID
+			    AND b.still_id = c.still_id
+			    AND A.MOVIE_SEQ = B.MOVIE_SEQ
+			    AND A.MOVIE_ID = #{movieId}
+			    AND A.MOVIE_SEQ = #{movieSeq}
+			    AND C.OPEN_YN ='Y'
+			    AND C.ST_GU='1'
+			 UNION
+			 SELECT A.TITLE
+			 		, A.PROD_YEAR
+			 		, LPAD(B.stillFILM_ID,8,'0') IMGID
+			 		, B.stillFILM_ID STILL_DETAIL_ID
+			 		, B.STILLFILM_NO STILL_DETAIL_NO
+			 		, B.prohibit_19
+			 		, rownum as seq
+			   FROM MOVIE_SE A , STILL_FILM B
+			  WHERE A.MOVIE_ID = B.MOVIE_ID
+			    AND A.MOVIE_SEQ = B.MOVIE_SEQ
+			    AND A.MOVIE_ID = #{movieId}
+			    AND A.MOVIE_SEQ = #{movieSeq}
+			    AND B.OPEN_YN ='Y'
+			 )
+	</select>
+
+	<select id="selectStaffList" parameterType="hashMap" resultType="egovMap">
+		select PERSON_NM, CREDIT_ID, CREDIT_NM, STAFF, CREDIT_SEQ, PERSON_ID, KORNM, ENGNM, ETC, CHINM, UNCREDITED
+	    	from ( SELECT A.PERSON_NM
+	    				, B.CREDIT_ID
+	    				, B.CREDIT_NM
+	    				, A.STAFF
+	    				, A.CREDIT_SEQ
+	    				, C.PERSON_ID
+	    				, C.KORNM
+	    				, C.ENGNM
+	    				, A.ETC
+	    				, C.CHINM
+	    				, A.UNCREDITED
+	        		FROM CREDIT_MOVIE A , CREDIT_MANG B , PERSON C
+	            	WHERE A.CREDIT_ID = B.CREDIT_ID
+	            		AND A.PERSON_ID = C.PERSON_ID(+)
+	           			AND A.MOVIE_ID = #{movieId}
+	           			AND A.MOVIE_SEQ = #{movieSeq}
+	           			AND (B.CREDIT_ID > '006')
+	           			AND A.OPEN_YN = 'Y'
+	           		ORDER BY B.CREDIT_ID , A.CREDIT_SEQ )
+	</select>
+
+	<select id="selectStaffDivList" parameterType="hashMap" resultType="egovMap">
+	    SELECT CREDIT_ID, CREDIT_NM, STAFF
+			FROM ( SELECT B.CREDIT_ID
+					, B.CREDIT_NM
+					, A.STAFF
+				FROM CREDIT_MOVIE A
+					, CREDIT_MANG B
+					, PERSON C
+			WHERE A.CREDIT_ID = B.CREDIT_ID AND A.PERSON_ID = C.PERSON_ID(+)
+			AND A.MOVIE_ID = #{movieId}
+			AND A.MOVIE_SEQ = #{movieSeq}
+			AND (B.CREDIT_ID > '006')
+			ORDER BY B.CREDIT_ID , A.CREDIT_SEQ )
+			GROUP BY CREDIT_ID, CREDIT_NM, STAFF
+    </select>
+
+	<select id="selectMovieAwardList" parameterType="hashMap" resultMap="movieAwardMap">
+    select MAINTITLE, CNT, FEA_AWORD, FEA_MOVIE, FEA_MOVIECODE,F_PERS_NAME, F_PERS_ID, FED_YEAR, FE_NO , FED_NO, FED_YEAR AS FED_YEAR_PARAM, FE_NO AS FE_NO_PARAM , FED_NO AS FED_NO_PARAM
+    	FROM (SELECT DECODE( RN#, 1, NAME_KOR, '' ) MAINTITLE
+	    			, DECODE( RN1, 1, FED_TIME, '' ) CNT
+	    			, FEA_AWORD
+	    			, FEA_MOVIE
+	    			, FEA_MOVIECODE
+	    			, F_PERS_NAME
+	    			, F_PERS_ID
+	    			, FED_YEAR
+	    			, FE_NO
+	    			, FED_NO
+        		FROM ( SELECT row_number() OVER ( PARTITION BY B.NAME_KOR ORDER BY ROWNUM ) RN#
+     					   , B.NAME_KOR
+     					   , row_number() OVER ( PARTITION BY D.FED_TIME ORDER BY ROWNUM ) RN1
+        				   , D.FED_TIME
+        				   , A.FEA_AWORD
+        				   , A.FEA_MOVIE
+        				   , A.FEA_MOVIECODE
+        				   , C.F_PERS_NAME
+        				   , C.F_PERS_ID
+        				   , D.FED_YEAR
+        				   , B.FE_NO
+        				   , A.FED_NO
+            			FROM TBLFESTIVALAWORD A
+            				, TBLFESTIVAL B
+            				, TBLFESTIVAL_PERS_REL C
+            				, TBLFESTIVALDETAIL D
+               		   WHERE A.FED_NO = D.FED_NO
+               		   	 AND D.FE_NO = B.FE_NO
+               		   	 AND A.F_AWARD_ID = C.F_AWARD_ID(+)
+               		 	 AND A.FEA_MOVIECODE =  '${movieId}${movieSeq}'
+               			 AND b.open_yn = 'Y'
+               			ORDER BY B.NAME_KOR ) R
+               		)
+               	WHERE MAINTITLE IS NOT null
+    </select>
+
+    <select id="selectMovieAwardYearSubList" resultType="egovMap">
+    select FEA_AWORD, FEA_MOVIE, FEA_MOVIECODE,F_PERS_NAME, F_PERS_ID, FED_YEAR, FE_NO, FED_NO
+		FROM (SELECT FEA_AWORD
+					, FEA_MOVIE
+					, FEA_MOVIECODE
+					, F_PERS_NAME
+					, F_PERS_ID
+					, FED_YEAR
+					, FE_NO
+					, FED_NO
+    			FROM ( SELECT row_number() OVER ( PARTITION BY B.NAME_KOR ORDER BY ROWNUM ) RN#
+           			 		, B.NAME_KOR
+           			 		, row_number() OVER ( PARTITION BY D.FED_TIME ORDER BY ROWNUM ) RN1
+            				, D.FED_TIME
+            				, A.FEA_AWORD
+            				, A.FEA_MOVIE
+            				, A.FEA_MOVIECODE
+            				, C.F_PERS_NAME
+            				, C.F_PERS_ID
+            				, D.FED_YEAR
+            				, B.FE_NO
+            				, A.FED_NO
+               		 	FROM TBLFESTIVALAWORD A
+               		 		, TBLFESTIVAL B
+               		 		, TBLFESTIVAL_PERS_REL C
+               		 		, TBLFESTIVALDETAIL D
+                   	   WHERE A.FED_NO = D.FED_NO
+                   	   	 AND D.FE_NO = B.FE_NO
+                   	   	 AND A.F_AWARD_ID = C.F_AWARD_ID(+)
+                         AND A.FEA_MOVIECODE = #{feaMoviecode}
+                         AND b.open_yn = 'Y' ORDER BY B.NAME_KOR
+                       ) R
+               )
+         WHERE FED_YEAR = #{fedYearParam} and FE_NO = #{feNoParam} and FED_NO = #{fedNoParam}
+    </select>
+
+    <select id="selectMovieAwardEtcList" parameterType="hashMap" resultType="egovMap">
+	    SELECT AWARD
+			FROM (SELECT AWARD
+					FROM MOVIE
+				  WHERE MOVIE_ID = #{movieId}
+					AND MOVIE_SEQ = #{movieSeq}
+					AND AWARD is not null )
+    </select>
+
+    <select id="selectSubDetailInfo" parameterType="hashMap" resultType="egovMap">
+	SELECT TITLE, TYPE_CLSS, KEYWORDS, PROD_YEAR, FILMCNS_CLSS, ORG_TIT, SCENARIO, DIRECTOR, CNS_DATE, CNS_NO, ORG_AUTHOR, KOFIC_NKR, TECHNIQUE_CLSS, NATION_CLSS, LEVEL_CLSS, TELECAST_FRDATE, LEVELNM, THEATER, VIEWERS_NUM, COMPY_CLSS, TITLE_ENG, PLOT,WEB_URL, RUNTIME,EXPORT_STAT, DISTRIBUTE, PLACE, AWARD, CODE_NM,  NOTE1, NOTE2, NOTE3, NOTE4, NOTE5, NOTE6
+		FROM ( SELECT A.TITLE
+					, A.TYPE_CLSS
+					, A.KEYWORDS
+					, A.PROD_YEAR
+					, A.FILMCNS_CLSS
+					, A.ORG_TIT
+					, A.SCENARIO
+					, A.DIRECTOR
+					, A.CNS_DATE
+					, A.CNS_NO
+					, A.ORG_AUTHOR
+					, A.KOFIC_NKR
+					, A.TECHNIQUE_CLSS
+					, A.NATION_CLSS
+					, A.LEVEL_CLSS
+					, A.TELECAST_FRDATE
+					, LEVEL1.CODE_NM LEVELNM
+					, B.THEATER
+					, E.VIEWERS_NUM
+					, A.COMPY_CLSS
+					, DECODE(A.MOVIE_ID, 'F', A.ORG_TIT_ENG, A.TITLE_ENG) TITLE_ENG
+					, D.PLOT as PLOT
+					, B.WEB_URL
+					, a.RUNTIME
+					, B.EXPORT_STAT
+					, UF_PRODREL(A.MOVIE_ID, A.MOVIE_SEQ, '904') AS DISTRIBUTE
+					, A.PLACE
+					, B.AWARD
+					, C.CODE_NM
+					, DBMS_LOB.SUBSTR(B.NOTE, 1500, 1) NOTE1
+					, DBMS_LOB.SUBSTR(B.NOTE, 1500, 1501) NOTE2
+					, DBMS_LOB.SUBSTR(B.NOTE, 1500, 3001) NOTE3
+					, DBMS_LOB.SUBSTR(B.NOTE, 1500, 4501) NOTE4
+					, DBMS_LOB.SUBSTR(B.NOTE, 1500, 6001) NOTE5
+					, DBMS_LOB.SUBSTR(B.NOTE, 1500, 7501) NOTE6
+					, ROWNUM AS ROW_NUM
+				FROM MOVIE_SE A , MOVIE B , CODEINFO C,
+					( SELECT MOVIE_ID
+							, MOVIE_SEQ
+							, DBMS_LOB.SUBSTR(PLOT, 1500, 1) PLOT
+				        FROM MOVIE_PLOT
+				       WHERE MOVIE_ID = #{movieId}
+				        	AND MOVIE_SEQ = #{movieSeq}
+				       	 	AND LANG_CLSS = '1'
+				        	AND OPEN_YN = 'Y'
+				        	AND ROWNUM &lt; 2 ) D,
+				    ( SELECT MOVIE_ID
+				    		, MOVIE_SEQ
+				    		, TRIM(TO_CHAR(VIEWERS_NUM, '999,999,999,999')) || '명' ||DECODE(area, NULL, '', '(' || UF_CODE_NM('A41', AREA) || ')') VIEWERS_NUM
+				    	FROM MOVIE_VIEWERS
+				      WHERE MOVIE_ID = #{movieId}
+				      	AND MOVIE_SEQ = #{movieSeq}
+				      	AND ROWNUM &lt; 2 ) E,
+				    ( SELECT CODE, CODE_NM
+				    	 FROM CODEINFO
+				    	WHERE DIV_ID = 'A08') LEVEL1 ,
+				    ( SELECT CODE, CODE_NM
+				    	 FROM CODEINFO
+				    	WHERE DIV_ID = 'A01') PATTERN
+				WHERE A.MOVIE_ID = B.MOVIE_ID(+)
+					AND A.MOVIE_SEQ = B.MOVIE_SEQ(+)
+					AND A.MOVIE_ID = D.MOVIE_ID(+)
+				    AND A.MOVIE_SEQ = D.MOVIE_SEQ(+)
+				    AND A.MOVIE_ID = E.MOVIE_ID(+)
+				    AND A.MOVIE_SEQ = E.MOVIE_SEQ(+)
+				    AND A.MOVIE_ID = #{movieId}
+				    AND A.MOVIE_SEQ = #{movieSeq}
+				    AND A.LEVEL_CLSS = LEVEL1.CODE(+)
+				    AND C.DIV_ID = 'A05'
+				    AND A.PATTEN_CLSS = PATTERN.CODE(+)
+				    AND ROWNUM=1 )
+    </select>
+
+    <select id="selectAnotherTitleInfo" parameterType="hashMap" resultType="egovMap">
+		SELECT TITLENM, TITLE_CLSS, TITLE_NAME, NOTE, ORG_TIT, bTITLE_ENG
+			FROM (SELECT TITLE_CLSS.CODE_NM TITLENM
+						, A.TITLE_CLSS
+						, A.TITLE_NAME
+						, A.NOTE
+						, B.ORG_TIT
+						, B.TITLE_ENG as bTITLE_ENG
+					FROM MOVIE_TITLES A
+						, MOVIE_SE B
+						, ( SELECT CODE
+								, CODE_NM
+							  FROM CODEINFO
+							WHERE DIV_ID = 'T01') TITLE_CLSS
+					WHERE A.TITLE_CLSS = TITLE_CLSS.CODE(+)
+						AND A.MOVIE_ID=#{movieId}
+						AND A.MOVIE_SEQ=#{movieSeq}
+						AND A.MOVIE_ID = B.MOVIE_ID
+						AND A.MOVIE_SEQ = B.MOVIE_SEQ)
+	</select>
+
+	<select id="selectLocationList" parameterType="hashMap" resultType="egovMap">
+		SELECT place_seqno,place
+			FROM movie_place_rel
+		 WHERE movie_id=#{movieId}
+		   AND movie_seq=#{movieSeq}
+		 order by place
+	</select>
+
+    <select id="selectDivList" parameterType="hashMap" resultType="egovMap">
+    select MOVIELIST_NAME, DIV1_MOVIELIST_NAME, MOVIELIST_NO, MOVIELIST_ID, MOVIELIST_ITEMS_ID, MOVIE_ID, MOVIE_SEQ, WEB_SEQ, TITLE, ORG_TIT, DIRECTOR, PROD_YEAR, DCOUNT, RCOUNT, VCOUNT, SEQ
+		FROM (SELECT MOVIELIST_NAME
+					, MOVIELIST_NO
+					, DIV1_MOVIELIST_NAME
+					, MOVIELIST_ID
+					, MOVIELIST_ITEMS_ID
+					, MOVIE_ID
+					, MOVIE_SEQ
+					, WEB_SEQ
+					, TITLE
+					, ORG_TIT
+					, DIRECTOR
+					, PROD_YEAR
+					, DCOUNT
+					, RCOUNT
+					, VCOUNT
+					, seq
+ 				FROM (SELECT A.MOVIELIST_NAME
+ 						, A.MOVIELIST_NO
+ 						, B.MOVIELIST_ID
+ 						, B.MOVIELIST_ITEMS_ID
+ 						, B.MOVIE_ID
+ 						, B.MOVIE_SEQ
+ 						, B.WEB_SEQ
+ 						, C.TITLE
+ 						, C.ORG_TIT
+ 						, C.DIRECTOR
+ 						, C.PROD_YEAR
+ 						, D.DCOUNT
+ 						, D.RCOUNT
+ 						, D.VCOUNT
+ 						, rownum seq
+ 						, E.DIV1_MOVIELIST_NAME AS DIV1_MOVIELIST_NAME
+     				FROM MOVIELIST A
+     					, MOVIELIST_ITEMS B
+     					, MOVIE_SE C,
+				          (
+				  			SELECT MOVIE_ID, MOVIE_SEQ, SUM(DCOUNT) DCOUNT, SUM(RCOUNT) RCOUNT, SUM(VCOUNT) VCOUNT
+				  	 		  FROM (
+				  					SELECT  A1.MOVIE_ID
+				  							, A1.MOVIE_SEQ
+				  							, DECODE(C1.DEV_CLSS,'D',1,0) DCOUNT
+				  							, DECODE(C1.DEV_CLSS,'R',1,0) RCOUNT
+				  							, DECODE(C1.DEV_CLSS,'V',1,0) VCOUNT
+				  					  FROM
+				  				         (SELECT A1.VIDEO_ID
+				  				         		, A1.MOVIE_ID
+				  				         		, A1.MOVIE_SEQ FROM VIDEO_MOV_REL A1
+				  				         		, MOVIELIST_ITEMS B1
+				                                  WHERE A1.MOVIE_ID = B1.MOVIE_ID
+				                                    AND A1.MOVIE_SEQ = B1.MOVIE_SEQ ) A1 ,
+				                                VIDEO c1, VIDEO_DETAIL d1
+				                      WHERE A1.VIDEO_ID = C1.VIDEO_ID
+				                          AND A1.VIDEO_ID = D1.VIDEO_ID
+				                          AND C1.DEV_CLSS IN ('D','R','V')
+				                          AND D1.POS_CLSS IN ('3','4','5')
+				                     )
+				              GROUP BY MOVIE_ID, MOVIE_SEQ
+				          ) D
+         , (SELECT MOVIELIST_NO AS DIV1_MOVIELIST_NO
+         		,MOVIELIST_NAME AS DIV1_MOVIELIST_NAME
+		     FROM MOVIELIST  ) E
+    WHERE  A.MOVIELIST_ID = B.MOVIELIST_ID
+      AND B.MOVIE_ID = C.MOVIE_ID
+      AND B.MOVIE_SEQ = C.MOVIE_SEQ
+      AND B.MOVIE_ID = D.MOVIE_ID (+)
+      AND B.MOVIE_SEQ = D.MOVIE_SEQ (+)
+      AND B.MOVIE_ID = #{movieId}
+      AND B.MOVIE_SEQ = #{movieSeq}
+      AND SUBSTR(A.MOVIELIST_NO, 0, 2) = E.DIV1_MOVIELIST_NO
+    order by B.WEB_SEQ ) )
+    </select>
+
+    <select id="selectUserReviewList" parameterType="hashMap" resultType="egovMap">
+    select MOVIELIST_NAME, DIV1_MOVIELIST_NAME, MOVIELIST_NO, MOVIELIST_ID, MOVIELIST_ITEMS_ID, MOVIE_ID, MOVIE_SEQ, WEB_SEQ, TITLE, ORG_TIT, DIRECTOR, PROD_YEAR, DCOUNT, RCOUNT, VCOUNT, SEQ
+		FROM (SELECT MOVIELIST_NAME
+					, MOVIELIST_NO
+					, DIV1_MOVIELIST_NAME
+					, MOVIELIST_ID
+					, MOVIELIST_ITEMS_ID
+					, MOVIE_ID
+					, MOVIE_SEQ
+					, WEB_SEQ
+					, TITLE
+					, ORG_TIT
+					, DIRECTOR
+					, PROD_YEAR
+					, DCOUNT
+					, RCOUNT
+					, VCOUNT
+					, seq
+ 				FROM (SELECT A.MOVIELIST_NAME
+ 						, A.MOVIELIST_NO
+ 						, B.MOVIELIST_ID
+ 						, B.MOVIELIST_ITEMS_ID
+ 						, B.MOVIE_ID
+ 						, B.MOVIE_SEQ
+ 						, B.WEB_SEQ
+ 						, C.TITLE
+ 						, C.ORG_TIT
+ 						, C.DIRECTOR
+ 						, C.PROD_YEAR
+ 						, D.DCOUNT
+ 						, D.RCOUNT
+ 						, D.VCOUNT
+ 						, rownum seq
+ 						, E.DIV1_MOVIELIST_NAME AS DIV1_MOVIELIST_NAME
+     				FROM MOVIELIST A
+     					, MOVIELIST_ITEMS B
+     					, MOVIE_SE C,
+				          (
+				  			SELECT MOVIE_ID, MOVIE_SEQ, SUM(DCOUNT) DCOUNT, SUM(RCOUNT) RCOUNT, SUM(VCOUNT) VCOUNT
+				  	 		  FROM (
+				  					SELECT  A1.MOVIE_ID
+				  							, A1.MOVIE_SEQ
+				  							, DECODE(C1.DEV_CLSS,'D',1,0) DCOUNT
+				  							, DECODE(C1.DEV_CLSS,'R',1,0) RCOUNT
+				  							, DECODE(C1.DEV_CLSS,'V',1,0) VCOUNT
+				  					  FROM
+				  				         (SELECT A1.VIDEO_ID
+				  				         		, A1.MOVIE_ID
+				  				         		, A1.MOVIE_SEQ FROM VIDEO_MOV_REL A1
+				  				         		, MOVIELIST_ITEMS B1
+				                                  WHERE A1.MOVIE_ID = B1.MOVIE_ID
+				                                    AND A1.MOVIE_SEQ = B1.MOVIE_SEQ ) A1 ,
+				                                VIDEO c1, VIDEO_DETAIL d1
+				                      WHERE A1.VIDEO_ID = C1.VIDEO_ID
+				                          AND A1.VIDEO_ID = D1.VIDEO_ID
+				                          AND C1.DEV_CLSS IN ('D','R','V')
+				                          AND D1.POS_CLSS IN ('3','4','5')
+				                     )
+				              GROUP BY MOVIE_ID, MOVIE_SEQ
+				          ) D
+         , (SELECT MOVIELIST_NO AS DIV1_MOVIELIST_NO
+         		,MOVIELIST_NAME AS DIV1_MOVIELIST_NAME
+		     FROM MOVIELIST  ) E
+    WHERE  A.MOVIELIST_ID = B.MOVIELIST_ID
+      AND B.MOVIE_ID = C.MOVIE_ID
+      AND B.MOVIE_SEQ = C.MOVIE_SEQ
+      AND B.MOVIE_ID = D.MOVIE_ID (+)
+      AND B.MOVIE_SEQ = D.MOVIE_SEQ (+)
+      AND B.MOVIE_ID = #{movieId}
+      AND B.MOVIE_SEQ = #{movieSeq}
+      AND SUBSTR(A.MOVIELIST_NO, 0, 2) = E.DIV1_MOVIELIST_NO
+    order by B.WEB_SEQ ) )
+    </select>
+
+
+
+    <select id="selectRelMovieList" parameterType="hashMap" resultType="egovMap">
+    SELECT movie_id, movie_seq, title, prod_year, gubun,re_movie_id, re_movie_seq, tno, FILENAME, DIRECTOR, IMG_PATH
+    	FROM ( SELECT a.CONN_MOVIE_ID as movie_id
+    				, a.CONN_MOVIE_SEQ as movie_seq
+    				, b.title as title
+    				, b.prod_year as prod_year
+    				, '리메이크' as gubun
+    				, A.CONN_MOVIE_SEQ as re_movie_seq
+    				, A.CONN_MOVIE_ID as re_movie_id
+    				, C.TNO as tno
+    				, C.FILENAME as FILENAME
+    				, B.DIRECTOR as DIRECTOR
+    				, C.IMG_PATH as IMG_PATH
+	 			FROM MOVIE_CONN A, MOVIE_SE B,
+					 (SELECT TNO
+					         , SUBSTR(TNO, 1, 2) || '/' || SUBSTR(TNO, 3, 2) || '/' || SUBSTR(TNO, 5, 2) IMG_PATH
+					         , FILENAME
+					         , MAIN_JPG
+					         , MOVIE_ID
+					         , MOVIE_SEQ
+						  FROM (
+								SELECT LPAD(A.POSTER_NO,8,'0') TNO
+									 , A.IMAGE_NM filename
+									 , A.main_jpg
+				                     , A.MOVIE_ID
+				                     , A.MOVIE_SEQ
+								  FROM POSTER A
+								     , POSTER_SET B
+								WHERE
+						             A.POSTER_ID = B.POSTER_ID
+									AND A.TYPE_CLSS = '2'
+									AND B.USE_CLSS = '1'
+									AND A.MAIN_JPG = 'Y'
+									AND B.OPEN_YN = 'Y'
+									AND A.IMAGE_NM IS NOT NULL
+						) ) C
+					  WHERE A.KIND_CLSS = 'R'
+					    AND A.MOVIE_ID = #{movieId}
+					    AND A.MOVIE_SEQ = #{movieSeq}
+					    AND A.CONN_MOVIE_ID = B.MOVIE_ID
+					    AND A.CONN_MOVIE_SEQ = B.MOVIE_SEQ
+					    AND C.MOVIE_ID = B.MOVIE_ID
+					    AND C.MOVIE_SEQ = B.MOVIE_SEQ
+					union
+					 SELECT a.movie_id as movie_id
+					 	  , a.movie_seq as movie_seq
+					 	  , b.title as title
+					 	  , b.prod_year as prod_year
+					 	  , '시리즈' as gubun
+					 	  , null as re_movie_id
+					 	  , null as re_movie_seq
+					 	  , C.TNO as tno
+					 	  , C.FILENAME as FILENAME
+					 	  , B.DIRECTOR as DIRECTOR
+					 	  , C.IMG_PATH as IMG_PATH
+				        FROM MOVIE_CONN A, MOVIE_SE B,
+				        (SELECT TNO
+				                     , SUBSTR(TNO, 1, 2) || '/' || SUBSTR(TNO, 3, 2) || '/' || SUBSTR(TNO, 5, 2) IMG_PATH
+				                     , FILENAME
+				                     , MAIN_JPG
+				                     , MOVIE_ID
+				                    , MOVIE_SEQ
+				              FROM (
+				                    SELECT LPAD(A.POSTER_NO,8,'0') TNO
+				                         , A.IMAGE_NM filename
+				                         , A.main_jpg
+				                         , A.MOVIE_ID
+				                         , A.MOVIE_SEQ
+				                      FROM POSTER A
+				                         , POSTER_SET B
+				                    WHERE
+				                         A.POSTER_ID = B.POSTER_ID
+				                        AND A.TYPE_CLSS = '2'
+				                        AND B.USE_CLSS = '1'
+				                        AND A.MAIN_JPG = 'Y'
+				                        AND B.OPEN_YN = 'Y'
+				                        AND A.IMAGE_NM IS NOT NULL
+				            ) ) C
+					  WHERE A.KIND_CLSS = 'S'
+					    AND A.CONN_NO = ( SELECT CONN_NO FROM MOVIE_CONN WHERE MOVIE_ID = #{movieId} AND MOVIE_SEQ = #{movieSeq} )
+					    AND A.MOVIE_ID = B.MOVIE_ID
+					    AND A.MOVIE_SEQ = B.MOVIE_SEQ
+					    AND A.MOVIE_SEQ != #{movieSeq}
+					    AND C.MOVIE_ID = B.MOVIE_ID
+					    AND C.MOVIE_SEQ = B.MOVIE_SEQ
+					)   order by gubun desc
+
+    </select>
+
+	<select id="selectSnoCount" parameterType="hashMap" resultType="int">
+        SELECT SNO
+          FROM TBLSCRAP
+		WHERE USERID = #{userId}
+        	AND GUBUN = #{view}
+     </select>
+
+     <insert id="insertSnoInfo" parameterType="hashMap">
+        <selectKey keyProperty="idx" resultType="long" order="BEFORE">
+           SELECT NVL(MAX(SNO), 0) + 1 FROM TBLSCRAP
+        </selectKey>
+        INSERT INTO TBLSCRAP(
+        	SNO
+        	, STYPE
+        	, USERID
+        	, SNAME
+        	, GUBUN
+        )
+        VALUES (
+			#{idx}
+			, #{stype}
+			, #{userId}
+			, #{snoName}
+			, #{gubun}
+        )
+    </insert>
+
+     <insert id="insertUserViewProc" parameterType="hashMap">
+     	<selectKey keyProperty="idx" resultType="long" order="BEFORE">
+           SELECT NVL(MAX(CLIP_SEQNO), 0) + 1 as CLIP_SEQNO FROM URLCLIP WHERE USERID = #{userId}
+        </selectKey>
+        INSERT INTO URLCLIP(
+        	CLIP_SEQNO
+        	, USERID
+        	, CLIP_POSITIONNM
+        	, STYPE
+        	, SNO
+        	, MOVIE_ID
+        	, MOVIE_SEQ
+        	, INDATE
+        	, SEEDATE
+        )
+        VALUES (
+			#{idx}
+			, #{userId}
+			, #{viewPath}
+			, #{stype}
+			, #{sno}
+			, #{movieId}
+			, #{movieSeq}
+			, TO_CHAR(SYSDATE, 'YYYY-MM-DD')
+			<choose>
+				<when test="@egovframework.ag.common.util.StringUtils@toEqualsStr('1', radio) == true">
+				     , TO_CHAR(SYSDATE, 'YYYY-MM-DD')
+				</when>
+				<when test="@egovframework.ag.common.util.StringUtils@toEqualsStr('1', radio) == false">
+				     , '0000-00-00'
+				</when>
+			</choose>
+        )
+     </insert>
+
+     <select id="selectUserViewCount" parameterType="hashMap" resultType="int">
+        SELECT COUNT(1)
+          FROM URLCLIP
+		WHERE USERID = #{userId}
+        	AND SNO = #{sno}
+			AND MOVIE_ID	= #{movieId}
+			AND MOVIE_SEQ	= #{movieSeq}
+     </select>
+
+     <select id="selectFilmList" parameterType="hashMap" resultType="FilmVO">
+		SELECT F_MAIN.MOVIE_ID
+			     , F_MAIN.MOVIE_SEQ
+				, F_MAIN.F_ITEM --구분
+				, F_MAIN.F_UNIT --규격
+				, F_MAIN.F_COLOR --색채
+				, F_MAIN.F_SCREEN --화면비
+				, F_SET.F_SOUND --사운드
+				, F_SET.F_LANG --언어
+				, F_SET.F_JAMAK --자막
+				, F_SET.F_RUNTIME --시간
+				, F_SET.F_POSITION --보관위치
+				, F_SET.F_IMETHOD --입수방법
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'B01' AND CODEINFO.CODE = F_MAIN.F_UNIT) F_UNIT_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.CODE = F_MAIN.F_ITEM AND (CODEINFO.DIV_ID = 'B02' OR CODEINFO.DIV_ID = 'B19')) F_ITEM_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'B20' AND CODEINFO.CODE = F_MAIN.F_COLOR) F_COLOR_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'B03' AND CODEINFO.CODE = F_MAIN.F_SCREEN) F_SCREEN_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'B04' AND CODEINFO.CODE = F_SET.F_SOUND) F_SOUND_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'B08' AND CODEINFO.CODE = F_SET.F_IMETHOD) F_IMETHOD_NM
+				, CASE WHEN (F_SET.F_POSITION IS NOT NULL AND SUBSTR(F_SET.F_POSITION, 1,1) = 'L' )  THEN '상암'
+				WHEN (F_SET.F_POSITION IS NOT NULL AND SUBSTR(F_SET.F_POSITION, 1,1) = 'K' )  THEN '상암'
+				WHEN (F_SET.F_POSITION IS NOT NULL AND SUBSTR(F_SET.F_POSITION, 1,1) = 'M' )  THEN '상암'
+				WHEN (F_SET.F_POSITION IS NOT NULL AND SUBSTR(F_SET.F_POSITION, 1,1) = 'O' )  THEN '상암'
+				WHEN (F_SET.F_POSITION IS NOT NULL AND SUBSTR(F_SET.F_POSITION, 1,1) = 'S' )  THEN '상암'
+				       ELSE '파주'
+				  END F_POSITION_NM --보관위치
+
+		   FROM F_MAIN , F_SET
+		  WHERE F_MAIN.MOVIE_ID = F_SET.MOVIE_ID
+		      AND F_MAIN.MOVIE_SEQ = F_SET.MOVIE_SEQ
+		  	  AND F_MAIN.F_UNIT = F_SET.F_UNIT
+		  	  AND F_MAIN.F_ITEM = F_SET.F_ITEM
+		  	  AND F_MAIN.F_COLOR = F_SET.F_COLOR
+		  	  AND F_MAIN.MOVIE_ID = #{movieId}
+		  	  AND F_MAIN.MOVIE_SEQ = #{movieSeq}
+		  	  AND F_MAIN.F_ITEM IN ('D','M','O','P')
+		  	  AND (F_SET.IPGO > 0 OR F_SET.JAMO1 > 0 OR F_SET.WITAK1 > 0 )
+		  	  AND (NVL(F_SET.OPEN_YN, 'N') = 'N' )
+     </select>
+
+     <select id="selectDcinemaList" parameterType="hashMap" resultType="DcinemaVO">
+		SELECT T1.MOVIE_ID
+				, T1.MOVIE_SEQ
+				, T2.FORM_CLSS -- 파일종류
+				, T3.CLASS_CLSS -- 구분
+				, T3.FORMAT_CLSS -- 파일형식
+				, T3.SCREEN_SIZE -- 해상도
+				, T3.PICTURE_RATIO -- 화면비
+				, T3.COLOR_MODE -- 컬러모드
+				, T3.SOUND_CHANNEL -- 사운드채널수
+				, T3.METHOD_CLSS  -- 입수방법
+				, T3.D_DETAIL_NO   -- 관리번호
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'DC01' AND CODEINFO.CODE = T2.FORM_CLSS) FORM_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'DC32' AND CODEINFO.CODE = T3.CLASS_CLSS) CLASS_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'DC03' AND CODEINFO.CODE = T3.FORMAT_CLSS) FORMAT_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'DC04' AND CODEINFO.CODE = T3.SCREEN_SIZE) SCREEN_SIZE_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'DC05' AND CODEINFO.CODE = T3.PICTURE_RATIO) PICTURE_RATIO_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'DC08' AND CODEINFO.CODE = T3.COLOR_MODE) COLOR_MODE_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'K03' AND CODEINFO.CODE = T3.METHOD_CLSS) METHOD_CLSS_NM
+		   FROM MOVIE_SE T1
+		  INNER JOIN DCINEMA_MAIN T2 ON T2.MOVIE_ID = T1.MOVIE_ID AND T2.MOVIE_SEQ = T1.MOVIE_SEQ
+		  INNER JOIN DCINEMA_DETAIL T3 ON T3.D_MAIN_ID = T2.D_MAIN_ID
+		 WHERE T1.MOVIE_ID = #{movieId}
+		    AND T1.MOVIE_SEQ = #{movieSeq}
+		    AND NVL(T3.OPEN_YN, 'N' ) &lt;&gt; 'Y'
+    </select>
+
+    <select id="selectTapeList" parameterType="hashMap" resultType="TapeDiskVO">
+		SELECT C.MOVIE_ID
+				, C.MOVIE_SEQ
+				, A.DEV_CLSS --규격
+				, A.COMPY --제조사
+				, A.V_COMPANY --제조회사
+				, A.V_SALE --판매원
+				, A.NATIONAL_CLSS --제작국가
+				, A.PROD_YEAR --제조년도
+				, A.V_CNT  --수량
+				, A.LANG_CLSS --언어
+				, A.CAP_CLSS --자막
+				, A.V_TAPEBUN --매체분량
+				, A.BARCODE --바코드
+				, A.LEVEL_CLSS --관람기준
+				, A.CNS_NO --심의번호
+				, A.CNS_DATE --심의일자
+				, A.SCREEN_CLSS --화면종류
+				, A.COLOR_CLSS --색채
+				, A.RUNTIME --상영시간
+				, A.V_RMETHOD --녹화방식
+				, A.NTSC_CLSS --NTSC
+				, B.POS_CLSS --보관위치
+				, A.ADDTIONAL_IMG --부가영상
+				, A.SUPPLEMENT --부록
+				, A.CONTENTS		--내용
+				, A.VIDEO_NO  --관리번호
+				, A.V_FILE  -- 비디오 이미지
+				, A.TITLES	-- 제목
+				, A.TITLE_SUB -- 부제목
+				, A.TITLE_ETC -- 기타제목
+				, LPAD(A.VIDEO_ID,8,'0') T_NO
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'C04' AND CODEINFO.CODE = A.DEV_CLSS) DEV_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'A13' AND CODEINFO.CODE = A.NATIONAL_CLSS) NATIONAL_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'A08' AND CODEINFO.CODE = A.LEVEL_CLSS) LEVEL_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'B20' AND CODEINFO.CODE = A.COLOR_CLSS) COLOR_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'C05' AND CODEINFO.CODE = A.SCREEN_CLSS) SCREEN_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'DI' AND CODEINFO.CODE = A.V_RMETHOD) V_RMETHOD_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'D21' AND CODEINFO.CODE IN (B.POS_CLSS)) POS_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'C09' AND CODEINFO.CODE IN (A.NTSC_CLSS)) NTSC_CLSS_NM
+		   FROM VIDEO A, VIDEO_DETAIL B, VIDEO_MOV_REL C
+		   WHERE A.VIDEO_ID=B.VIDEO_ID
+		       AND A.VIDEO_ID=C.VIDEO_ID
+		       AND A.DEV_CLSS IN ('R','D','V','H','S','G','A','6','M','B','C')
+		       AND A.FORM_CLSS = 'T' --T: 테이프, D: 디스크
+		       AND B.POS_CLSS IN ('1','4','21','5')
+	           AND C.MOVIE_ID = #{movieId}
+	           AND C.MOVIE_SEQ = #{movieSeq}
+	           AND (OPEN_YN = 'N' OR OPEN_YN IS null)
+	           AND SCREEN_YN = '1'
+    </select>
+
+    <select id="selectDiskList" parameterType="hashMap" resultType="TapeDiskVO">
+		SELECT C.MOVIE_ID
+				, C.MOVIE_SEQ
+				, A.DEV_CLSS --규격
+				, A.COMPY --제조사
+				, A.V_COMPANY --제조회사
+				, A.V_SALE --판매원
+				, A.NATIONAL_CLSS --제작국가
+				, A.PROD_YEAR --제조년도
+				, A.V_CNT  --수량
+				, A.LANG_CLSS --언어
+				, A.CAP_CLSS --자막
+				, A.V_TAPEBUN --매체분량
+				, A.BARCODE --바코드
+				, A.LEVEL_CLSS --관람기준
+				, A.CNS_NO --심의번호
+				, A.CNS_DATE --심의일자
+				, A.SCREEN_CLSS --화면종류
+				, A.COLOR_CLSS --색채
+				, A.RUNTIME --상영시간
+				, A.V_RMETHOD --녹화방식
+				, A.NTSC_CLSS --NTSC
+				, B.POS_CLSS --보관위치
+				, A.ADDTIONAL_IMG --부가영상
+				, A.SUPPLEMENT --부록
+				, A.CONTENTS		--내용
+				, A.VIDEO_NO  --관리번호
+				, A.V_FILE  -- 비디오 이미지
+				, A.TITLES	-- 제목
+				, A.TITLE_SUB -- 부제목
+				, A.TITLE_ETC -- 기타제목
+				, LPAD(A.VIDEO_ID,8,'0') T_NO
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'C04' AND CODEINFO.CODE = A.DEV_CLSS) DEV_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'A13' AND CODEINFO.CODE = A.NATIONAL_CLSS) NATIONAL_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'A08' AND CODEINFO.CODE = A.LEVEL_CLSS) LEVEL_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'B20' AND CODEINFO.CODE = A.COLOR_CLSS) COLOR_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'C05' AND CODEINFO.CODE = A.SCREEN_CLSS) SCREEN_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'DI' AND CODEINFO.CODE = A.V_RMETHOD) V_RMETHOD_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'D21' AND CODEINFO.CODE IN (B.POS_CLSS)) POS_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'C09' AND CODEINFO.CODE IN (A.NTSC_CLSS)) NTSC_CLSS_NM
+		   FROM VIDEO A, VIDEO_DETAIL B, VIDEO_MOV_REL C
+		   WHERE A.VIDEO_ID=B.VIDEO_ID
+		       AND A.VIDEO_ID=C.VIDEO_ID
+		       AND A.DEV_CLSS IN ('R','D','V','H','S','G','A','6','M','B','C')
+		       AND A.FORM_CLSS = 'D' --T: 테이프, D: 디스크
+		       AND B.POS_CLSS IN ('1','4','21','5')
+	           AND C.MOVIE_ID = #{movieId}
+	           AND C.MOVIE_SEQ = #{movieSeq}
+	           AND (OPEN_YN = 'N' OR OPEN_YN IS null)
+	           AND SCREEN_YN = '1'
+    </select>
+
+
+     <select id="selectVodList" parameterType="hashMap" resultType="vodVO">
+  		SELECT A.MOVIE_ID
+				, A.MOVIE_SEQ
+		        , B.MUL_TITLE --본제목
+		        , B.TITLE_SUB --부제목
+		        , B.TITLE_ETC --기타제목
+		        , B.TITLE_EQUAL
+				, B.RUNTIME --상영시간
+				, B.COLOR_CLSS --색채
+				, B.MSCREEN_CLSS --상영구분
+				, B.LEVEL_CLSS --관람기준
+				, B.LANGUAGE --언어
+				, B.PLOT --내용
+				, C.H_SIZE --프레임크기
+				, C.V_SIZE --프레임크기
+				, C.PRICE --가격
+				, C.YOUTUBE_URL
+				, C.NAVER_URL
+        		, LEV.CODE_NM LEVEL_CLSS_NM
+          		, COLOR.CODE_NM COLOR_CLSS_NM
+          		, LANG.CODE_NM LANGUAGE_NM
+          		, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'A09' AND CODEINFO.CODE = B.MSCREEN_CLSS) MSCREEN_CLSS_NM
+          		, C.USE_CLSS
+          		, C.MULTOR_NM
+		  FROM MULTI_MOVIE_REL A, MULTI_NEW B, MULTI_FILE C,
+		   (SELECT CODE, CODE_NM FROM CODEINFO WHERE DIV_ID = 'A08') LEV,
+		   (SELECT CODE, CODE_NM FROM CODEINFO WHERE DIV_ID = 'B20') COLOR,
+		   (SELECT CODE, CODE_NM FROM CODEINFO WHERE DIV_ID = 'A14') LANG
+		   WHERE A.MUL_ID=B.MUL_ID AND B.MUL_ID=C.MUL_ID
+		   AND B.LEVEL_CLSS = LEV.CODE(+)
+		   AND B.COLOR_CLSS= COLOR.CODE(+)
+		   AND B.LANGUAGE = LANG.CODE(+)
+		   AND A.MOVIE_SEQ = #{movieSeq}
+		   AND A.MOVIE_ID = #{movieId}
+		   <choose>
+			    <when test="mobileYN != null and mobileYN == 'Y'">
+			    AND C.USE_CLSS IN ('2','6') -- 1 웹서비스, 2 영상도서관VOD, 6 모바일 //  PC웹: 1, 2 노출 / 모바일웹: 2,6 노출하시면 됩니다.
+			    </when>
+			    <otherwise>
+			    AND C.USE_CLSS IN ('1','2') -- 1 웹서비스, 2 영상도서관VOD, 6 모바일 //  PC웹: 1, 2 노출 / 모바일웹: 2,6 노출하시면 됩니다.
+			    </otherwise>
+			</choose>
+		   AND C.OPEN_YN = 'Y'
+		   AND C.MULTOR_NM IS NOT NULL
+		   AND MSCREEN_CLSS = '2' --2 : 본편, 1 : 예고편, 4 : 메이킹, 5 : 뮤직비디오, 6 : 제작보고회, 7 : 영화해설, 3 : 기타, 8 : GV
+    </select>
+
+    <select id="selectPosterList" parameterType="hashMap" resultType="PosterVO">
+  		SELECT A.MOVIE_ID
+				, A.MOVIE_SEQ
+				, A.FED_NO
+       			, A.POSTER_ID
+       			, A.POSTER_NO
+       			, LPAD(A.POSTER_NO,8,'0') IMGID
+       			, A.PROHIBIT_19 PROHIBIT19
+				, A.POST_NAME MAIN_TITLE --본제목
+		        , A.TITLE_SUB --부제목
+		        , A.TITLE_ETC --기타제목
+		        , A.TITLE_EQUAL
+				, A.NATION_CLSS --발행국
+				, A.NATIONAL_CLSS --국가구분
+				, A.PRODUCER --배급
+				, A.POSTER_PIC --사진
+				, A.AD_DESIGN --디자인
+				, A.PRINT_INFO --인쇄
+				, A.POST_YEAR --개봉일
+				, A.ROW_NO --종번호
+				, A.LANG_CLSS --언어
+				, A.COLOR_CLSS --색채
+				, A.PERSON_INFO --인물
+				, A.COPY_TEXT --홍보카피
+				, A.KEYWORDS --내용
+				, A.REL_DATA_NO --연계자료
+				, A.TYPE_CLSS --'1' 인쇄물, '2' 파일
+				, A.IMAGE_NM --이미지파일명
+				, B.IMG_HSIZE --크기
+				, B.IMG_VSIZE --크기
+				, B.FILE_SIZE --용량
+				, B.DP_VALUE --해상도
+				, B.COL_DEPTH --색심도
+				, B.POS_CLSS --보관위치
+				, TO_CHAR(A.POSTER_ID) POSTER_STILL_ID
+				, TO_CHAR(A.POSTER_NO) POSTER_STILL_NO
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'A13' AND CODEINFO.CODE = A.NATION_CLSS) NATION_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'A16' AND CODEINFO.CODE = A.NATIONAL_CLSS) NATIONAL_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'B20' AND CODEINFO.CODE = A.COLOR_CLSS) COLOR_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'E07' AND CODEINFO.CODE = A.TYPE_CLSS) TYPE_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'D21' AND CODEINFO.CODE = B.POS_CLSS) POS_CLSS_NM
+       			, (SELECT  WM_CONCAT(T1.KORNM)
+    				 FROM (select POSTER_PERS_REL.POSTER_ID, POSTER_PERS_REL.PERSON_ID, PERSON.KORNM, PERSON.CHINM, PERSON.ENGNM From POSTER_PERS_REL
+                    INNER JOIN PERSON ON POSTER_PERS_REL.PERSON_ID = PERSON.PERSON_ID)T1
+   					WHERE T1.POSTER_ID = A.POSTER_ID
+ 					GROUP BY T1.POSTER_ID
+ 					) PERSON_NM
+		 FROM POSTER A, POSTER_SET B
+		 WHERE A.POSTER_ID = B.POSTER_ID
+			    AND CONTENS_CLSS = '1' --CONTENS_CLSS = 1 : 영화, 3:인물,  4 : 영화제, 5 : 기타
+			    AND A.MOVIE_ID = #{movieId}
+				AND A.MOVIE_SEQ = #{movieSeq}
+			   <choose>
+				<when test="@egovframework.ag.common.util.StringUtils@toEqualsStr('1', typeClss) == true"> --인쇄물만 있는 경우
+			    AND A.TYPE_CLSS =  #{typeClss}
+			    AND B.POS_CLSS = '8'
+			    AND (A.NOVIEW_YN = 'N' OR  A.NOVIEW_YN IS NULL)
+				</when>
+				<when test="@egovframework.ag.common.util.StringUtils@toEqualsStr('2', typeClss) == true"> --파일만 있는경우
+			    AND A.TYPE_CLSS =  #{typeClss}
+			    AND B.USE_CLSS = '1'
+			    AND B.OPEN_YN = 'Y'
+			    AND (A.NOVIEW_YN = 'N' OR  A.NOVIEW_YN IS NULL)
+				</when>
+			    <otherwise> -- 인쇄물, 파일 전부검색
+			    AND (
+						(A.TYPE_CLSS = '1' AND B.POS_CLSS = '8' AND (A.NOVIEW_YN = 'N' OR  A.NOVIEW_YN IS NULL))
+						OR
+						(A.TYPE_CLSS = '2' AND B.USE_CLSS = '1' AND B.OPEN_YN = 'Y' AND (A.NOVIEW_YN = 'N' OR  A.NOVIEW_YN IS NULL))
+					)
+			    </otherwise>
+			</choose>
+    </select>
+
+    <select id="selectStillList" parameterType="hashMap" resultType="StillVO">
+  		SELECT A.MOVIE_ID
+				, A.MOVIE_SEQ
+				, A.FED_NO
+		        , A.STILL_NO
+		        , B.STILL_DETAIL_NO
+		        , LPAD(A.STILL_T_NO,8,'0') IMGID
+       			, A.PROHIBIT_19 PROHIBIT19
+		        , A.STILL_NM MAIN_TITLE --본제목
+				, A.TYPE_CLSS --구분
+				, A.CONTENS_DCLSS --내용상세
+				, A.LANG_CLSS --언어
+				, A.COLOR_CLSS --색채
+				, A.PERSON_INFO --인물
+				, A.KEYWORDS --내용
+        		, A.KIND_CLSS
+				, A.STILL_NO_FILE --연계자료
+				, A.IMAGE_NM --이미지파일명
+				, A.ST_YEAR
+				, B.HSIZE --크기
+				, B.VSIZE --크기
+				, B.FILE_SIZE --용량
+				, B.DP_VALUE --해상도
+				, B.COL_DEPTH --색심도
+				, B.POS_CLSS --보관위치
+				, TO_CHAR(A.STILL_NO) POSTER_STILL_ID
+				, TO_CHAR(B.STILL_DETAIL_NO) POSTER_STILL_NO
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'E03' AND CODEINFO.CODE = A.TYPE_CLSS) TYPE_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'E10' AND CODEINFO.CODE = A.CONTENS_DCLSS) CONTENS_DCLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'E07' AND CODEINFO.CODE = A.KIND_CLSS) KIND_CLSS_NM
+				, (SELECT CODE_NM FROM CODEINFO WHERE CODEINFO.DIV_ID = 'D21' AND CODEINFO.CODE = B.POS_CLSS) POS_CLSS_NM
+		 FROM STILL A, STILL_DETAIL B
+	    WHERE A.STILL_ID = B.STILL_ID
+		    AND A.MOVIE_ID = #{movieId}
+			AND A.MOVIE_SEQ = #{movieSeq}
+		    <choose>
+			<when test="@egovframework.ag.common.util.StringUtils@toEqualsStr('1', typeClss) == true"> --인쇄물만 있는 경우
+		    AND A.KIND_CLSS =  '1'
+		    AND B.POS_CLSS = '7'
+		    AND (A.NOVIEW_YN = 'N' OR  A.NOVIEW_YN IS NULL)
+		    </when>
+		    <when test="@egovframework.ag.common.util.StringUtils@toEqualsStr('2', typeClss) == true"> --파일만 있는경우
+		    AND A.KIND_CLSS = '2'
+		    AND A.IMAGE_NM IS NOT NULL
+		    AND B.OPEN_YN = 'Y'
+		    AND (A.NOVIEW_YN = 'N' OR  A.NOVIEW_YN IS NULL)
+		    </when>
+		    <otherwise> -- 인쇄물, 파일 전부검색
+		    AND (
+		    		(A.KIND_CLSS = '1' AND B.POS_CLSS = '7'  AND (A.NOVIEW_YN = 'N' OR  A.NOVIEW_YN IS NULL))
+		    		OR
+		    		(A.KIND_CLSS = '2' AND A.IMAGE_NM IS NOT NULL AND B.OPEN_YN = 'Y' AND (A.NOVIEW_YN = 'N' OR  A.NOVIEW_YN IS NULL))
+				)
+		    </otherwise>
+		</choose>
+	</select>
+
+</mapper>
